@@ -2,7 +2,7 @@
 
 A beautiful, standalone Windows desktop widget that displays your Claude.ai usage statistics in real-time.
 
-![Claude Usage Widget](screenshot.png)
+![Claude Usage Widget](assets/claude-usage-screenshot.jpg)
 
 ## Features
 
