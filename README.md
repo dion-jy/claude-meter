@@ -18,7 +18,7 @@ A beautiful, standalone Windows desktop widget that displays your Claude.ai usag
 ## Installation
 
 ### Download Pre-built Release
-1. Download the latest `Claude-Usage-Widget-Setup.exe` from [Releases](releases)
+1. Download the latest `Claude-Usage-Widget-Setup.exe` from [Releases](https://github.com/SlavomirDurej/claude-usage-widget/releases)
 2. Run the installer
 3. Launch "Claude Usage Widget" from Start Menu
 
