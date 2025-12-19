@@ -10,6 +10,7 @@ const elements = {
     loadingContainer: document.getElementById('loadingContainer'),
     loginContainer: document.getElementById('loginContainer'),
     noUsageContainer: document.getElementById('noUsageContainer'),
+    autoLoginContainer: document.getElementById('autoLoginContainer'),
     mainContent: document.getElementById('mainContent'),
     loginBtn: document.getElementById('loginBtn'),
     refreshBtn: document.getElementById('refreshBtn'),
@@ -103,6 +104,25 @@ function setupEventListeners() {
     window.electronAPI.onRefreshUsage(async () => {
         await fetchUsageData();
     });
+
+    // Listen for session expiration events (403 errors) - only used as fallback
+    window.electronAPI.onSessionExpired(() => {
+        console.log('Session expired event received');
+        credentials = { sessionKey: null, organizationId: null };
+        showLoginRequired();
+    });
+
+    // Listen for silent login attempts
+    window.electronAPI.onSilentLoginStarted(() => {
+        console.log('Silent login started...');
+        showAutoLoginAttempt();
+    });
+
+    // Listen for silent login failures (falls back to visible login)
+    window.electronAPI.onSilentLoginFailed(() => {
+        console.log('Silent login failed, manual login required');
+        showLoginRequired();
+    });
 }
 
 // Fetch usage data from Claude API
@@ -122,9 +142,11 @@ async function fetchUsageData() {
         updateUI(data);
     } catch (error) {
         console.error('Error fetching usage data:', error);
-        if (error.message.includes('Unauthorized')) {
-            await window.electronAPI.deleteCredentials();
-            showLoginRequired();
+        if (error.message.includes('SessionExpired') || error.message.includes('Unauthorized')) {
+            // Session expired - silent login attempt is in progress
+            // Show auto-login UI while waiting
+            credentials = { sessionKey: null, organizationId: null };
+            showAutoLoginAttempt();
         } else {
             showError('Failed to fetch usage data');
         }
@@ -139,7 +161,7 @@ function hasNoUsage(data) {
     const weeklyResetsAt = data.seven_day?.resets_at;
 
     return sessionUtilization === 0 && !sessionResetsAt &&
-           weeklyUtilization === 0 && !weeklyResetsAt;
+        weeklyUtilization === 0 && !weeklyResetsAt;
 }
 
 // Update UI with usage data
@@ -316,6 +338,7 @@ function showLoading() {
     elements.loadingContainer.style.display = 'block';
     elements.loginContainer.style.display = 'none';
     elements.noUsageContainer.style.display = 'none';
+    elements.autoLoginContainer.style.display = 'none';
     elements.mainContent.style.display = 'none';
 }
 
@@ -323,6 +346,7 @@ function showLoginRequired() {
     elements.loadingContainer.style.display = 'none';
     elements.loginContainer.style.display = 'flex'; // Use flex to preserve centering
     elements.noUsageContainer.style.display = 'none';
+    elements.autoLoginContainer.style.display = 'none';
     elements.mainContent.style.display = 'none';
     stopAutoUpdate();
 }
@@ -331,13 +355,24 @@ function showNoUsage() {
     elements.loadingContainer.style.display = 'none';
     elements.loginContainer.style.display = 'none';
     elements.noUsageContainer.style.display = 'flex';
+    elements.autoLoginContainer.style.display = 'none';
     elements.mainContent.style.display = 'none';
+}
+
+function showAutoLoginAttempt() {
+    elements.loadingContainer.style.display = 'none';
+    elements.loginContainer.style.display = 'none';
+    elements.noUsageContainer.style.display = 'none';
+    elements.autoLoginContainer.style.display = 'flex';
+    elements.mainContent.style.display = 'none';
+    stopAutoUpdate();
 }
 
 function showMainContent() {
     elements.loadingContainer.style.display = 'none';
     elements.loginContainer.style.display = 'none';
     elements.noUsageContainer.style.display = 'none';
+    elements.autoLoginContainer.style.display = 'none';
     elements.mainContent.style.display = 'block';
 }
 

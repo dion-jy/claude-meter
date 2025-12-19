@@ -24,6 +24,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onRefreshUsage: (callback) => {
     ipcRenderer.on('refresh-usage', () => callback());
   },
+  onSessionExpired: (callback) => {
+    ipcRenderer.on('session-expired', () => callback());
+  },
+  onSilentLoginStarted: (callback) => {
+    ipcRenderer.on('silent-login-started', () => callback());
+  },
+  onSilentLoginFailed: (callback) => {
+    ipcRenderer.on('silent-login-failed', () => callback());
+  },
 
   // API
   fetchUsageData: () => ipcRenderer.invoke('fetch-usage-data'),

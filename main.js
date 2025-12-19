@@ -9,6 +9,7 @@ const store = new Store({
 
 let mainWindow = null;
 let loginWindow = null;
+let silentLoginWindow = null;
 let tray = null;
 
 // Window configuration
@@ -176,6 +177,149 @@ function createLoginWindow() {
   });
 }
 
+// Attempt silent login in a hidden browser window
+async function attemptSilentLogin() {
+  console.log('[Main] Attempting silent login...');
+
+  // Notify renderer that we're trying to auto-login
+  if (mainWindow) {
+    mainWindow.webContents.send('silent-login-started');
+  }
+
+  return new Promise((resolve) => {
+    silentLoginWindow = new BrowserWindow({
+      width: 800,
+      height: 700,
+      show: false, // Hidden window
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true
+      }
+    });
+
+    silentLoginWindow.loadURL('https://claude.ai');
+
+    let loginCheckInterval = null;
+    let hasLoggedIn = false;
+    const SILENT_LOGIN_TIMEOUT = 15000; // 15 seconds timeout
+
+    // Function to check login status
+    async function checkLoginStatus() {
+      if (hasLoggedIn || !silentLoginWindow) return;
+
+      try {
+        const cookies = await session.defaultSession.cookies.get({
+          url: 'https://claude.ai',
+          name: 'sessionKey'
+        });
+
+        if (cookies.length > 0) {
+          const sessionKey = cookies[0].value;
+          console.log('[Main] Silent login: Session key found, attempting to get org ID...');
+
+          // Fetch org ID from API
+          let orgId = null;
+          try {
+            const response = await axios.get('https://claude.ai/api/organizations', {
+              headers: {
+                'Cookie': `sessionKey=${sessionKey}`,
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+              }
+            });
+
+            if (response.data && Array.isArray(response.data) && response.data.length > 0) {
+              orgId = response.data[0].uuid || response.data[0].id;
+              console.log('[Main] Silent login: Org ID fetched from API:', orgId);
+            }
+          } catch (err) {
+            console.log('[Main] Silent login: API not ready yet:', err.message);
+          }
+
+          if (sessionKey && orgId) {
+            hasLoggedIn = true;
+            if (loginCheckInterval) {
+              clearInterval(loginCheckInterval);
+              loginCheckInterval = null;
+            }
+
+            console.log('[Main] Silent login successful!');
+            store.set('sessionKey', sessionKey);
+            store.set('organizationId', orgId);
+
+            if (mainWindow) {
+              mainWindow.webContents.send('login-success', { sessionKey, organizationId: orgId });
+            }
+
+            silentLoginWindow.close();
+            resolve(true);
+          }
+        }
+      } catch (error) {
+        console.error('[Main] Silent login check error:', error);
+      }
+    }
+
+    // Check on page load
+    silentLoginWindow.webContents.on('did-finish-load', async () => {
+      const url = silentLoginWindow.webContents.getURL();
+      console.log('[Main] Silent login page loaded:', url);
+
+      if (url.includes('claude.ai')) {
+        await checkLoginStatus();
+      }
+    });
+
+    // Also check on navigation
+    silentLoginWindow.webContents.on('did-navigate', async (event, url) => {
+      console.log('[Main] Silent login navigated to:', url);
+      if (url.includes('claude.ai')) {
+        await checkLoginStatus();
+      }
+    });
+
+    // Poll periodically
+    loginCheckInterval = setInterval(async () => {
+      if (!hasLoggedIn && silentLoginWindow) {
+        await checkLoginStatus();
+      } else if (loginCheckInterval) {
+        clearInterval(loginCheckInterval);
+        loginCheckInterval = null;
+      }
+    }, 1000);
+
+    // Timeout - if silent login doesn't work, fall back to visible login
+    setTimeout(() => {
+      if (!hasLoggedIn) {
+        console.log('[Main] Silent login timeout, falling back to visible login...');
+        if (loginCheckInterval) {
+          clearInterval(loginCheckInterval);
+          loginCheckInterval = null;
+        }
+        if (silentLoginWindow) {
+          silentLoginWindow.close();
+        }
+
+        // Notify renderer that silent login failed
+        if (mainWindow) {
+          mainWindow.webContents.send('silent-login-failed');
+        }
+
+        // Open visible login window
+        createLoginWindow();
+        resolve(false);
+      }
+    }, SILENT_LOGIN_TIMEOUT);
+
+    silentLoginWindow.on('closed', () => {
+      if (loginCheckInterval) {
+        clearInterval(loginCheckInterval);
+        loginCheckInterval = null;
+      }
+      silentLoginWindow = null;
+    });
+  });
+}
+
 function createTray() {
   try {
     tray = new Tray(path.join(__dirname, 'assets/tray-icon.png'));
@@ -331,7 +475,18 @@ ipcMain.handle('fetch-usage-data', async () => {
     if (error.response) {
       console.error('[Main] Response status:', error.response.status);
       if (error.response.status === 401 || error.response.status === 403) {
-        throw new Error('Unauthorized');
+        // Session expired - attempt silent re-login
+        console.log('[Main] Session expired, attempting silent re-login...');
+        store.delete('sessionKey');
+        store.delete('organizationId');
+
+        // Don't clear cookies - we need them for silent login to work with OAuth
+        // The silent login will use existing Google/OAuth session if available
+
+        // Attempt silent login (will notify renderer appropriately)
+        attemptSilentLogin();
+
+        throw new Error('SessionExpired');
       }
     }
     throw error;
