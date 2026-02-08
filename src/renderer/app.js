@@ -281,11 +281,52 @@ function buildExtraRows(data) {
 
     for (const [key, config] of Object.entries(EXTRA_ROW_CONFIG)) {
         const value = data[key];
-        if (!value || value.utilization === undefined) continue;
+        // extra_usage is valid with utilization OR balance_cents (prepaid only)
+        const hasUtilization = value && value.utilization !== undefined;
+        const hasBalance = key === 'extra_usage' && value && value.balance_cents != null;
+        if (!hasUtilization && !hasBalance) continue;
 
         const utilization = value.utilization || 0;
         const resetsAt = value.resets_at;
         const colorClass = config.color;
+
+        let percentageHTML;
+        let timerHTML;
+
+        if (key === 'extra_usage') {
+            // Percentage area → spending amounts
+            if (value.used_cents != null && value.limit_cents != null) {
+                const usedDollars = (value.used_cents / 100).toFixed(0);
+                const limitDollars = (value.limit_cents / 100).toFixed(0);
+                percentageHTML = `<span class="usage-percentage extra-spending">$${usedDollars}/$${limitDollars}</span>`;
+            } else {
+                percentageHTML = `<span class="usage-percentage">${Math.round(utilization)}%</span>`;
+            }
+            // Timer area → prepaid balance
+            if (value.balance_cents != null) {
+                const balanceDollars = (value.balance_cents / 100).toFixed(0);
+                timerHTML = `
+                    <div class="timer-container">
+                        <span class="timer-text extra-balance">Bal $${balanceDollars}</span>
+                    </div>
+                `;
+            } else {
+                timerHTML = `<div class="timer-container"></div>`;
+            }
+        } else {
+            percentageHTML = `<span class="usage-percentage">${Math.round(utilization)}%</span>`;
+            const totalMinutes = key.includes('seven_day') ? 7 * 24 * 60 : 5 * 60;
+            timerHTML = `
+                <div class="timer-container">
+                    <div class="timer-text" data-resets="${resetsAt || ''}" data-total="${totalMinutes}">--:--</div>
+                    <svg class="mini-timer" width="24" height="24" viewBox="0 0 24 24">
+                        <circle class="timer-bg" cx="12" cy="12" r="10" />
+                        <circle class="timer-progress ${colorClass}" cx="12" cy="12" r="10"
+                            style="stroke-dasharray: 63; stroke-dashoffset: 63" />
+                    </svg>
+                </div>
+            `;
+        }
 
         const row = document.createElement('div');
         row.className = 'usage-section';
@@ -294,15 +335,8 @@ function buildExtraRows(data) {
             <div class="progress-bar">
                 <div class="progress-fill ${colorClass}" style="width: ${Math.min(utilization, 100)}%"></div>
             </div>
-            <span class="usage-percentage">${Math.round(utilization)}%</span>
-            <div class="timer-container">
-                <div class="timer-text" data-resets="${resetsAt || ''}" data-total="${key.includes('seven_day') ? 7 * 24 * 60 : 5 * 60}">--:--</div>
-                <svg class="mini-timer" width="24" height="24" viewBox="0 0 24 24">
-                    <circle class="timer-bg" cx="12" cy="12" r="10" />
-                    <circle class="timer-progress ${colorClass}" cx="12" cy="12" r="10"
-                        style="stroke-dasharray: 63; stroke-dashoffset: 63" />
-                </svg>
-            </div>
+            ${percentageHTML}
+            ${timerHTML}
         `;
 
         // Apply warning/danger classes
