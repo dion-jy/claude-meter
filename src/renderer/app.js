@@ -386,11 +386,6 @@ function resizeWidget() {
 function updateUI(data) {
     latestUsageData = data;
 
-    if (hasNoUsage(data)) {
-        showNoUsage();
-        return;
-    }
-
     showMainContent();
     buildExtraRows(data);
     refreshTimers();
