@@ -14,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -30,9 +31,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.claudeusage.widget.data.model.CoachNotification
 import com.claudeusage.widget.data.model.ExtraUsageInfo
 import com.claudeusage.widget.data.model.UsageData
 import com.claudeusage.widget.ui.components.BannerAd
+import com.claudeusage.widget.ui.components.CoachBanner
 import com.claudeusage.widget.ui.components.UsageProgressBar
 import com.claudeusage.widget.ui.theme.*
 
@@ -43,11 +46,13 @@ fun UsageScreen(
     isRefreshing: Boolean,
     lastUpdated: String?,
     visibleMetrics: Set<String>,
+    coachNotification: CoachNotification? = null,
     onRefresh: () -> Unit,
     onLogout: () -> Unit,
     onLoginClick: () -> Unit,
     onManualLogin: (String) -> Unit,
-    onSettingsClick: () -> Unit
+    onSettingsClick: () -> Unit,
+    onForecastClick: () -> Unit = {}
 ) {
     Scaffold(
         topBar = {
@@ -61,6 +66,13 @@ fun UsageScreen(
                 },
                 actions = {
                     if (uiState is UiState.Success) {
+                        IconButton(onClick = onForecastClick) {
+                            Icon(
+                                Icons.Default.ShowChart,
+                                contentDescription = "Usage Forecast",
+                                tint = TextSecondary
+                            )
+                        }
                         IconButton(onClick = onSettingsClick) {
                             Icon(
                                 Icons.Default.Settings,
@@ -114,7 +126,8 @@ fun UsageScreen(
                 is UiState.Success -> UsageContent(
                     data = uiState.data,
                     lastUpdated = lastUpdated,
-                    visibleMetrics = visibleMetrics
+                    visibleMetrics = visibleMetrics,
+                    coachNotification = coachNotification
                 )
                 is UiState.Error -> ErrorContent(
                     message = uiState.message,
@@ -324,7 +337,8 @@ private fun LoginContent(
 private fun UsageContent(
     data: UsageData,
     lastUpdated: String?,
-    visibleMetrics: Set<String>
+    visibleMetrics: Set<String>,
+    coachNotification: CoachNotification? = null
 ) {
     val scrollState = rememberScrollState()
 
@@ -351,6 +365,12 @@ private fun UsageContent(
             metric = data.sevenDay ?: defaultMetric,
             totalWindowHours = 168.0
         )
+
+        // Coach banner
+        if (coachNotification != null) {
+            Spacer(modifier = Modifier.height(12.dp))
+            CoachBanner(notification = coachNotification)
+        }
 
         // Extra metrics (filtered by settings)
         val filteredMetrics = data.extraMetrics.filter { (label, _) ->
