@@ -1,191 +1,86 @@
-# Claude Usage Widget
+# ClaudeMeter
 
-A beautiful, standalone Windows desktop widget that displays your Claude.ai usage statistics in real-time.
+**Don't Waste a Single Token**
 
-![Claude Usage Widget](assets/claude-usage-screenshot.jpg)
+Squeeze your productivity. Monitor your Claude.ai usage in real-time.
 
 ## Features
 
-- 🎯 **Real-time Usage Tracking** - Monitor both session and weekly usage limits
-- 📊 **Visual Progress Bars** - Clean, gradient progress indicators
-- ⏱️ **Countdown Timers** - Circular timers showing time until reset
-- 🔄 **Auto-refresh** - Updates every 5 minutes automatically
-- 🎨 **Modern UI** - Sleek, draggable widget with dark theme
-- 🔒 **Secure** - Encrypted credential storage
-- 📍 **Always on Top** - Stays visible across all workspaces
-- 💾 **System Tray** - Minimizes to tray for easy access
+- **Real-time Usage Tracking** - Monitor session and weekly usage limits at a glance
+- **Home Screen Widget** - Check your usage without opening the app
+- **Visual Progress Bars** - Clean, color-coded indicators (normal / warning / critical)
+- **Background Updates** - Automatic refresh every 5 minutes via WorkManager
+- **Push Notifications** - Get alerted when usage hits critical thresholds
+- **Per-model Breakdown** - Track Sonnet, Opus, Cowork, and OAuth Apps usage separately
+- **Overage & Prepaid Tracking** - Monitor extra usage spending and prepaid credits
+- **Secure** - Credentials stored locally with Android EncryptedSharedPreferences
 
 ## Installation
 
-### Download Pre-built Release
-1. Download the latest `Claude-Usage-Widget-Setup.exe` from [Releases](https://github.com/SlavomirDurej/claude-usage-widget/releases)
-2. Run the installer
-3. Launch "Claude Usage Widget" from Start Menu
+### Download APK
+
+1. Download the latest APK from [Releases](https://github.com/CUN-bjy/claude-meter/releases)
+2. Enable "Install from unknown sources" if prompted
+3. Install and launch ClaudeMeter
 
 ### Build from Source
 
 **Prerequisites:**
-- Node.js 18+ ([Download](https://nodejs.org))
-- npm (comes with Node.js)
-
-**Steps:**
+- Android Studio (Hedgehog or later)
+- JDK 17
 
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/claude-usage-widget.git
-cd claude-usage-widget
-
-# Install dependencies
-npm install
-
-# Run in development mode
-npm start
-
-# Build installer for Windows
-npm run build:win
+git clone https://github.com/CUN-bjy/claude-meter.git
+cd claude-meter/android
+./gradlew assembleDebug
 ```
 
-The installer will be created in the `dist/` folder.
+The APK will be at `app/build/outputs/apk/debug/`.
 
 ## Usage
 
-### First Launch
-
-1. Launch the widget
-2. Click "Login to Claude" when prompted
-3. A browser window will open - login to your Claude.ai account
-4. The widget will automatically capture your session
-5. Usage data will start displaying immediately
-
-### Widget Controls
-
-- **Drag** - Click and drag the title bar to move the widget
-- **Refresh** - Click the refresh icon to update data immediately
-- **Minimize** - Click the minus icon to hide to system tray
-- **Close** - Click the X to minimize to tray (doesn't exit)
-
-### System Tray Menu
-
-Right-click the tray icon for:
-- Show/Hide widget
-- Refresh usage data
-- Re-login (if session expires)
-- Settings (coming soon)
-- Exit application
+1. **Launch ClaudeMeter**
+2. **Login** - A WebView opens to claude.ai; sign in with your credentials
+3. **View usage** - Your real-time metrics appear on the main screen
+4. **Add widget** - Long-press your home screen and add the ClaudeMeter widget
+5. **Configure** - Toggle which metrics to display in Settings
 
 ## Understanding the Display
 
-### Current Session
-- **Progress Bar** - Shows usage from 0-100%
-- **Timer** - Time remaining until 5-hour session resets
-- **Color Coding**:
-  - Purple: Normal usage (0-74%)
-  - Orange: High usage (75-89%)
-  - Red: Critical usage (90-100%)
+### Usage Metrics
 
-### Weekly Limit
-- **Progress Bar** - Shows weekly usage from 0-100%
-- **Timer** - Time remaining until weekly reset (Wednesdays 7:00 AM)
-- **Same color coding** as session usage
+| Metric | Description |
+|--------|-------------|
+| Session (5h) | Current session utilization |
+| Weekly (7d) | Rolling weekly usage |
+| Sonnet 7d | Sonnet model weekly usage |
+| Opus 7d | Opus model weekly usage |
+| Cowork 7d | Cowork feature weekly usage |
+| OAuth Apps 7d | OAuth apps weekly usage |
+| Extra Usage | Overage spending |
 
-## Configuration
+### Color Coding
 
-### Auto-start on Windows Boot
-
-1. Press `Win + R`
-2. Type `shell:startup` and press Enter
-3. Create a shortcut to the widget executable in this folder
-
-### Custom Refresh Interval
-
-Edit `src/renderer/app.js`:
-```javascript
-const UPDATE_INTERVAL = 5 * 60 * 1000; // Change to your preference (in milliseconds)
-```
-
-## Troubleshooting
-
-### "Login Required" keeps appearing
-- Your Claude.ai session may have expired
-- Click "Login to Claude" to re-authenticate
-- Check that you're logging into the correct account
-
-### Widget not updating
-- Check your internet connection
-- Click the refresh button manually
-- Ensure Claude.ai is accessible in your region
-- Try re-logging in from the system tray menu
-
-### Widget position not saving
-- Window position is now saved automatically when you drag it
-- Position will be restored when you restart the app
-
-### Build errors
-```bash
-# Clear cache and reinstall
-rm -rf node_modules package-lock.json
-npm install
-```
+- **Normal** (0-74%) - Standard usage
+- **Warning** (75-89%) - Approaching limit
+- **Critical** (90-100%) - Near or at limit
 
 ## Privacy & Security
 
-- Your session credentials are stored **locally only** using encrypted storage
-- No data is sent to any third-party servers
-- The widget only communicates with Claude.ai official API
-- Session cookies are stored using Electron's secure storage
-- **Logout** completely removes the session key from encrypted storage, clears all Claude.ai cookies, and wipes Electron session storage (localStorage, sessionStorage, cacheStorage) so nothing lingers on shared machines
+- All credentials stored **locally only** using EncryptedSharedPreferences
+- No analytics, telemetry, or third-party SDKs
+- The app communicates **only** with `claude.ai` official API endpoints
+- See [PRIVACY_POLICY.md](PRIVACY_POLICY.md) for full details
 
-### Session Key Storage Details
+## Tech Stack
 
-The `sessionKey` (a bearer token for Claude.ai) is stored in two places:
-
-| Location | Purpose | Cleared on logout? |
-|---|---|---|
-| `%APPDATA%/claude-usage-widget/config.json` (encrypted via `electron-store`) | Persists credentials between app restarts | Yes |
-| Electron in-memory session cookie (`.claude.ai` domain, `secure`, `httpOnly`) | Used by hidden BrowserWindow for API requests | Yes |
-
-The encryption key is embedded in the application. This protects against casual file inspection but not against a determined attacker with access to the source code. For shared machines, always log out when finished.
-
-## Technical Details
-
-**Built with:**
-- Electron 28.0.0
-- Pure JavaScript (no framework overhead)
-- Native Node.js APIs
-- electron-store for secure storage
-
-**API Endpoint:**
-```
-https://claude.ai/api/organizations/{org_id}/usage
-```
-
-**Storage Location:**
-```
-%APPDATA%/claude-usage-widget/config.json (encrypted)
-```
-
-**Debug Mode:**
-
-To enable verbose logging, run with the `--debug` flag or set the `DEBUG_LOG=1` environment variable:
-```bash
-# Via flag
-electron . --debug
-
-# Via env var
-DEBUG_LOG=1 npm start
-```
-
-## Roadmap
-
-- [ ] macOS support
-- [ ] Linux support
-- [ ] Custom themes
-- [ ] Notification alerts at usage thresholds
-- [x] Remember window position
-- [ ] Settings panel
-- [ ] Usage history graphs
-- [ ] Multiple account support
-- [ ] Keyboard shortcuts
+- **Language:** Kotlin
+- **UI:** Jetpack Compose + Material3
+- **Widget:** Glance (Compose-based app widgets)
+- **Networking:** OkHttp3
+- **Background:** WorkManager
+- **Min SDK:** 26 (Android 8.0)
+- **Target SDK:** 34 (Android 14)
 
 ## Contributing
 
@@ -202,10 +97,10 @@ This is an unofficial tool and is not affiliated with or endorsed by Anthropic. 
 ## Support
 
 If you encounter issues:
-1. Check the [Issues](issues) page
+1. Check the [Issues](https://github.com/CUN-bjy/claude-meter/issues) page
 2. Create a new issue with details about your problem
-3. Include your OS version and any error messages
+3. Include your Android version and any error messages
 
 ---
 
-Made with ❤️ for the Claude.ai community
+Made with care for the Claude.ai community

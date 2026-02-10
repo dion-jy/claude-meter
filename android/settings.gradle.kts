@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "ClaudeUsageWidget"
+rootProject.name = "ClaudeMeter"
 include(":app")

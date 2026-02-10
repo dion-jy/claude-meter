@@ -50,14 +50,14 @@ jobs:
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: Claude-Usage-Widget-Debug
+          name: ClaudeMeter-Debug
           path: android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
 
       - name: Upload Release APK
         uses: actions/upload-artifact@v4
         with:
-          name: Claude-Usage-Widget-Release
+          name: ClaudeMeter-Release
           path: android/app/build/outputs/apk/release/*.apk
           if-no-files-found: error
 

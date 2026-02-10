@@ -4,7 +4,7 @@
 
 ## Overview
 
-Claude Usage Widget ("the App") is an open-source utility that displays your Claude.ai usage information. This policy explains how the App handles your data.
+ClaudeMeter ("the App") is an open-source Android utility that displays your Claude.ai usage information in real-time. This policy explains how the App handles your data.
 
 ## Data Collection
 
@@ -50,6 +50,6 @@ This policy may be updated occasionally. Changes will be posted to this reposito
 
 ## Contact
 
-If you have questions about this policy, please open an issue on [GitHub](https://github.com/CUN-bjy/claude-usage-widget).
+If you have questions about this policy, please open an issue on [GitHub](https://github.com/CUN-bjy/claude-meter).
 
 ---
