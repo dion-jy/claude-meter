@@ -35,10 +35,10 @@ class UsageNotificationService : Service() {
     private fun createNotificationChannel() {
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "Claude Usage",
+            "Claude Meter",
             NotificationManager.IMPORTANCE_LOW
         ).apply {
-            description = "Shows current Claude usage status"
+            description = "Shows current Claude Meter status"
             setShowBadge(false)
         }
         val manager = getSystemService(NotificationManager::class.java)
