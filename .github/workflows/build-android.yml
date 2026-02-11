@@ -2,13 +2,13 @@ name: Build Android (APK)
 
 on:
   push:
-    branches: [main, main_app]
+    branches: [main]
     tags: ['v*']
     paths:
       - 'android/**'
       - '.github/workflows/build-android.yml'
   pull_request:
-    branches: [main_app]
+    branches: [main]
     paths:
       - 'android/**'
   workflow_dispatch:

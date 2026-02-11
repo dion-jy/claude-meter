@@ -83,6 +83,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
     implementation("androidx.activity:activity-compose:1.8.2")
+    implementation("androidx.fragment:fragment-ktx:1.6.2")
 
     // Compose BOM
     implementation(platform("androidx.compose:compose-bom:2024.04.01"))
@@ -113,6 +114,9 @@ dependencies {
 
     // Splash screen
     implementation("androidx.core:core-splashscreen:1.0.1")
+
+    // Google AdMob
+    implementation("com.google.android.gms:play-services-ads:23.1.0")
 
     // Debug
     debugImplementation("androidx.compose.ui:ui-tooling")

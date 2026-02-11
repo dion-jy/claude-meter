@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.claudeusage.widget.data.model.ExtraUsageInfo
 import com.claudeusage.widget.data.model.UsageData
+import com.claudeusage.widget.ui.components.BannerAd
 import com.claudeusage.widget.ui.components.UsageProgressBar
 import com.claudeusage.widget.ui.theme.*
 
@@ -390,6 +391,11 @@ private fun UsageContent(
             )
         }
 
+        // Banner Ad
+        Spacer(modifier = Modifier.height(16.dp))
+        BannerAd(
+            modifier = Modifier.fillMaxWidth()
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
     }
