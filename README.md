@@ -1,6 +1,16 @@
 # ClaudeMeter
 
+<p align="center">
+  <img src="assets/promo.jpg" alt="Claude Meter" width="280">
+</p>
+
 **Don't Waste a Single Token**
+
+<p align="center">
+  <img src="assets/screenshot.jpg" alt="Claude Meter Usage" width="180">&nbsp;&nbsp;
+  <img src="assets/screenshot-settings.jpg" alt="Claude Meter Settings" width="180">&nbsp;&nbsp;
+  <img src="assets/screenshot-notification.jpg" alt="Claude Meter Notification" width="180">
+</p>
 
 Squeeze your productivity. Monitor your Claude.ai usage in real-time.
 
@@ -19,7 +29,7 @@ Squeeze your productivity. Monitor your Claude.ai usage in real-time.
 
 ### Download APK
 
-1. Download the latest APK from [Releases](https://github.com/CUN-bjy/claude-meter/releases)
+1. Download the latest APK from [Releases](https://github.com/dion-jy/claude-meter/releases)
 2. Enable "Install from unknown sources" if prompted
 3. Install and launch ClaudeMeter
 
@@ -30,7 +40,7 @@ Squeeze your productivity. Monitor your Claude.ai usage in real-time.
 - JDK 17
 
 ```bash
-git clone https://github.com/CUN-bjy/claude-meter.git
+git clone https://github.com/dion-jy/claude-meter.git
 cd claude-meter/android
 ./gradlew assembleDebug
 ```
@@ -84,7 +94,15 @@ The APK will be at `app/build/outputs/apk/debug/`.
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome! 🎉
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feat/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feat/amazing-feature`)
+5. Open a Pull Request
+
+> **Note:** Direct pushes to `main` are not allowed. All changes must go through a PR.
 
 ## License
 
@@ -97,7 +115,7 @@ This is an unofficial tool and is not affiliated with or endorsed by Anthropic. 
 ## Support
 
 If you encounter issues:
-1. Check the [Issues](https://github.com/CUN-bjy/claude-meter/issues) page
+1. Check the [Issues](https://github.com/dion-jy/claude-meter/issues) page
 2. Create a new issue with details about your problem
 3. Include your Android version and any error messages
 
