@@ -38,7 +38,7 @@ class UsageNotificationService : Service() {
             "Claude Meter",
             NotificationManager.IMPORTANCE_LOW
         ).apply {
-            description = "Shows current Claude Meter status"
+            description = "Shows current Claude usage status"
             setShowBadge(false)
         }
         val manager = getSystemService(NotificationManager::class.java)
