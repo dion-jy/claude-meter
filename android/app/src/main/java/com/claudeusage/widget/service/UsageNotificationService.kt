@@ -35,7 +35,7 @@ class UsageNotificationService : Service() {
     private fun createNotificationChannel() {
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "Claude Usage",
+            "Claude Meter",
             NotificationManager.IMPORTANCE_LOW
         ).apply {
             description = "Shows current Claude usage status"

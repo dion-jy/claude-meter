@@ -77,7 +77,7 @@ private fun NoDataContent() {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = "Claude Usage",
+            text = "Claude Meter",
             style = TextStyle(
                 color = TextLight,
                 fontSize = 14.sp,
@@ -101,7 +101,7 @@ private fun UsageDataContent(data: UsageData) {
         modifier = GlanceModifier.fillMaxSize()
     ) {
         Text(
-            text = "Claude Usage",
+            text = "Claude Meter",
             style = TextStyle(
                 color = TextLight,
                 fontSize = 13.sp,

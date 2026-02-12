@@ -54,7 +54,7 @@ fun UsageScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Claude Usage",
+                        text = "Claude Meter",
                         fontWeight = FontWeight.Bold,
                         fontSize = 20.sp
                     )
@@ -228,7 +228,7 @@ private fun LoginContent(
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = "Claude Usage Widget",
+            text = "Claude Meter",
             fontSize = 22.sp,
             fontWeight = FontWeight.Bold,
             color = TextPrimary
