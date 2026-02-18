@@ -31,3 +31,17 @@ val StatusOpus = Color(0xFFF59E0B)
 
 // Progress bar backgrounds
 val ProgressTrack = Color(0xFF2A2A40)
+
+// Light mode backgrounds
+val LightBackground = Color(0xFFF5F5F7)
+val LightSurface = Color(0xFFFFFFFF)
+val LightSurfaceVariant = Color(0xFFE8E6F0)
+val LightCard = Color(0xFFFFFFFF)
+
+// Light mode text
+val LightTextPrimary = Color(0xFF1A1A2E)
+val LightTextSecondary = Color(0xFF5C5775)
+val LightTextMuted = Color(0xFF9490A5)
+
+// Light mode progress bar backgrounds
+val LightProgressTrack = Color(0xFFE0DEE8)
