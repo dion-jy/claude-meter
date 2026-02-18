@@ -30,6 +30,10 @@ yarn-error.log*
 .env.local
 .env.*.local
 
+# Keystore
+*.keystore
+*.jks
+
 # Electron
 *.electron/
 
