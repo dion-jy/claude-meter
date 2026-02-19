@@ -84,7 +84,7 @@ object ExtendedTheme {
 
 @Composable
 fun ClaudeUsageTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    darkTheme: Boolean = true,
     content: @Composable () -> Unit
 ) {
     val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme

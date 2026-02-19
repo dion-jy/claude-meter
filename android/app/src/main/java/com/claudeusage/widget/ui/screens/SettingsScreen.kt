@@ -46,6 +46,8 @@ fun SettingsScreen(
     onNotificationToggle: (Boolean) -> Unit,
     metricToggles: List<MetricToggle>,
     onMetricToggle: (String, Boolean) -> Unit,
+    themeMode: String,
+    onThemeModeChange: (String) -> Unit,
     onBack: () -> Unit
 ) {
     val uriHandler = LocalUriHandler.current
@@ -134,6 +136,35 @@ fun SettingsScreen(
                     checked = notificationEnabled,
                     onCheckedChange = onNotificationToggle
                 )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Theme section
+            SectionLabel("Theme")
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = ExtendedTheme.colors.cardBackground),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column {
+                    ThemeRadioRow(
+                        title = "Dark",
+                        subtitle = "Always use dark theme",
+                        selected = themeMode == "dark",
+                        onClick = { onThemeModeChange("dark") }
+                    )
+                    Divider(
+                        color = ExtendedTheme.colors.dividerColor,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+                    ThemeRadioRow(
+                        title = "System",
+                        subtitle = "Follow system setting",
+                        selected = themeMode == "system",
+                        onClick = { onThemeModeChange("system") }
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -327,6 +358,46 @@ private fun SettingsLinkRow(title: String, onClick: () -> Unit) {
             text = "\u203A",
             color = ExtendedTheme.colors.textMuted,
             fontSize = 18.sp
+        )
+    }
+}
+
+@Composable
+private fun ThemeRadioRow(
+    title: String,
+    subtitle: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                color = MaterialTheme.colorScheme.onBackground,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Medium
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = subtitle,
+                color = ExtendedTheme.colors.textMuted,
+                fontSize = 13.sp
+            )
+        }
+        RadioButton(
+            selected = selected,
+            onClick = onClick,
+            colors = RadioButtonDefaults.colors(
+                selectedColor = ClaudePurple,
+                unselectedColor = ExtendedTheme.colors.textSecondary
+            )
         )
     }
 }
