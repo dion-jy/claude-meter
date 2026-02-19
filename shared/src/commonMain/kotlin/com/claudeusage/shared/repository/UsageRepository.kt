@@ -18,9 +18,6 @@ class UsageRepository {
 
     private val client = HttpClient {
         expectSuccess = false
-        engine {
-            // 30 second timeout handled per-platform
-        }
     }
 
     private val json = Json { ignoreUnknownKeys = true }
