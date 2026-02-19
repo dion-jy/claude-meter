@@ -17,9 +17,9 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.claudeusage.widget.MainActivity
+import com.claudeusage.shared.model.UsageData
+import com.claudeusage.shared.repository.UsageRepository
 import com.claudeusage.widget.data.local.CredentialManager
-import com.claudeusage.widget.data.model.UsageData
-import com.claudeusage.widget.data.repository.UsageRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.time.Duration

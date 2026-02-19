@@ -40,3 +40,28 @@ yarn-error.log*
 # Cache
 .cache/
 .temp/
+
+# Android / Gradle
+.gradle/
+local.properties
+*.iml
+
+# iOS / Xcode
+iosApp/*.xcodeproj/
+iosApp/*.xcworkspace/
+iosApp/DerivedData/
+iosApp/Pods/
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+xcuserdata/
+*.xccheckout
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# KMP
+shared/build/

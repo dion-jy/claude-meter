@@ -1,4 +1,4 @@
-package com.claudeusage.widget.data.model
+package com.claudeusage.shared.model
 
 data class Credentials(
     val sessionKey: String,

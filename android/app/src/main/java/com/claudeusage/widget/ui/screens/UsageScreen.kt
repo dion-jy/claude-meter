@@ -31,8 +31,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.claudeusage.widget.data.model.ExtraUsageInfo
-import com.claudeusage.widget.data.model.UsageData
+import com.claudeusage.shared.model.ExtraUsageInfo
+import com.claudeusage.shared.model.UsageData
+import com.claudeusage.shared.model.UsageMetric
 import com.claudeusage.widget.ui.components.BannerAd
 import com.claudeusage.widget.ui.components.UsageProgressBar
 import com.claudeusage.widget.ui.theme.*
@@ -143,10 +144,8 @@ private fun LoadingContent() {
             .background(MaterialTheme.colorScheme.background),
         contentAlignment = Alignment.Center
     ) {
-        // Ring logo from the app icon
         val ringSize = 180.dp
         val ringColor = ClaudePurple
-        val ringColorLight = ClaudePurpleLight
         val gapColor = Color.White
 
         Canvas(modifier = Modifier.size(ringSize)) {
@@ -158,7 +157,6 @@ private fun LoadingContent() {
             val arcRect = Size(midRadius * 2, midRadius * 2)
             val arcTopLeft = Offset(c.x - midRadius, c.y - midRadius)
 
-            // Purple ring arc (main portion ~75%)
             drawArc(
                 color = ringColor,
                 startAngle = 290f,
@@ -169,7 +167,6 @@ private fun LoadingContent() {
                 size = arcRect
             )
 
-            // White gap arc (~25%)
             drawArc(
                 color = gapColor,
                 startAngle = 200f,
@@ -181,7 +178,6 @@ private fun LoadingContent() {
             )
         }
 
-        // Small 4-point star at bottom-right
         Text(
             text = "\u2726",
             color = ExtendedTheme.colors.textMuted,
@@ -208,7 +204,6 @@ private fun LoginContent(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        // Ring logo
         Canvas(modifier = Modifier.size(80.dp)) {
             val s = size.minDimension
             val c = Offset(s / 2, s / 2)
@@ -343,8 +338,7 @@ private fun UsageContent(
             .verticalScroll(scrollState)
             .padding(horizontal = 20.dp, vertical = 8.dp)
     ) {
-        // Main usage cards - always show even when null (after reset)
-        val defaultMetric = com.claudeusage.widget.data.model.UsageMetric(0.0, null)
+        val defaultMetric = UsageMetric(0.0, null)
 
         UsageCard(
             title = "Current Session",
@@ -361,7 +355,6 @@ private fun UsageContent(
             totalWindowHours = 168.0
         )
 
-        // Extra metrics (filtered by settings)
         val filteredMetrics = data.extraMetrics.filter { (label, _) ->
             when {
                 label.contains("Sonnet") -> "sonnet" in visibleMetrics
@@ -388,7 +381,6 @@ private fun UsageContent(
             }
         }
 
-        // Last updated
         if (lastUpdated != null) {
             Spacer(modifier = Modifier.height(20.dp))
             Text(
@@ -400,12 +392,8 @@ private fun UsageContent(
             )
         }
 
-        // Banner Ad
         Spacer(modifier = Modifier.height(16.dp))
-        BannerAd(
-            modifier = Modifier.fillMaxWidth()
-        )
-
+        BannerAd(modifier = Modifier.fillMaxWidth())
         Spacer(modifier = Modifier.height(16.dp))
     }
 }
@@ -414,7 +402,7 @@ private fun UsageContent(
 private fun UsageCard(
     title: String,
     subtitle: String,
-    metric: com.claudeusage.widget.data.model.UsageMetric,
+    metric: UsageMetric,
     totalWindowHours: Double = 5.0
 ) {
     Card(
@@ -459,7 +447,7 @@ private fun UsageCard(
 @Composable
 private fun MiniUsageCard(
     label: String,
-    metric: com.claudeusage.widget.data.model.UsageMetric,
+    metric: UsageMetric,
     totalWindowHours: Double = 168.0,
     extraUsageInfo: ExtraUsageInfo? = null
 ) {
@@ -521,7 +509,6 @@ private fun ExtraUsageBar(
             )
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // Prepaid balance
                 if (info.balanceCents != null) {
                     Text(
                         text = "Bal \$${info.balanceCents / 100}",
@@ -531,7 +518,6 @@ private fun ExtraUsageBar(
                         modifier = Modifier.padding(end = 8.dp)
                     )
                 }
-                // Spending or percentage
                 if (info.usedCents != null && info.limitCents != null) {
                     Text(
                         text = "\$${info.usedCents / 100}/\$${info.limitCents / 100}",
@@ -552,7 +538,6 @@ private fun ExtraUsageBar(
 
         Spacer(modifier = Modifier.height(6.dp))
 
-        // Progress bar
         Box(
             modifier = Modifier
                 .fillMaxWidth()

@@ -3,8 +3,8 @@ package com.claudeusage.widget.service
 import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import com.claudeusage.shared.repository.UsageRepository
 import com.claudeusage.widget.data.local.CredentialManager
-import com.claudeusage.widget.data.repository.UsageRepository
 import com.claudeusage.widget.widget.UsageWidgetReceiver
 
 class UsageUpdateWorker(

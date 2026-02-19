@@ -21,12 +21,13 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.claudeusage.widget.data.model.StatusLevel
+import com.claudeusage.shared.model.StatusLevel
+import com.claudeusage.shared.util.formatDuration
 import com.claudeusage.widget.ui.theme.*
-import java.time.Duration
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
+import kotlin.time.Duration
 
 @Composable
 fun UsageProgressBar(
@@ -46,7 +47,7 @@ fun UsageProgressBar(
     // Calculate elapsed time as fraction of total window
     val elapsedFraction = if (remainingDuration != null && totalWindowHours > 0) {
         val totalWindowSeconds = totalWindowHours * 3600
-        val remainingSeconds = remainingDuration.seconds.toDouble()
+        val remainingSeconds = remainingDuration.inWholeSeconds.toDouble()
         (1.0 - remainingSeconds / totalWindowSeconds).toFloat().coerceIn(0f, 1f)
     } else 0f
 
@@ -177,7 +178,7 @@ fun CircularTimer(
             style = Stroke(width = strokeWidth)
         )
 
-        val totalSeconds = remainingDuration.seconds.toFloat()
+        val totalSeconds = remainingDuration.inWholeSeconds.toFloat()
         val progress = if (totalSeconds > 0) {
             (totalSeconds % 3600) / 3600f
         } else 0f
@@ -200,21 +201,5 @@ fun CircularTimer(
             radius = 1.5.dp.toPx(),
             center = Offset(dotX, dotY)
         )
-    }
-}
-
-fun formatDuration(duration: Duration): String {
-    if (duration <= Duration.ZERO) return "Resetting..."
-
-    val totalSeconds = duration.seconds
-    val days = totalSeconds / 86400
-    val hours = (totalSeconds % 86400) / 3600
-    val minutes = (totalSeconds % 3600) / 60
-
-    return when {
-        days > 0 -> "Resets in ${days}d ${hours}h"
-        hours > 0 -> "Resets in ${hours}h ${minutes}m"
-        minutes > 0 -> "Resets in ${minutes}m"
-        else -> "Resetting soon..."
     }
 }

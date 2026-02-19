@@ -15,10 +15,10 @@ import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import com.claudeusage.widget.MainActivity
 import com.claudeusage.widget.R
+import com.claudeusage.shared.model.UsageData
+import com.claudeusage.shared.model.UsageMetric
+import com.claudeusage.shared.repository.UsageRepository
 import com.claudeusage.widget.data.local.CredentialManager
-import com.claudeusage.widget.data.model.UsageData
-import com.claudeusage.widget.data.model.UsageMetric
-import com.claudeusage.widget.data.repository.UsageRepository
 import kotlinx.coroutines.*
 
 class UsageNotificationService : Service() {
@@ -115,10 +115,10 @@ class UsageNotificationService : Service() {
 
     private fun formatRemaining(metric: UsageMetric): String {
         val remaining = metric.remainingDuration ?: return ""
-        if (remaining.seconds <= 0) return ""
-        val d = remaining.seconds / 86400
-        val h = (remaining.seconds % 86400) / 3600
-        val m = (remaining.seconds % 3600) / 60
+        if (remaining.inWholeSeconds <= 0) return ""
+        val d = remaining.inWholeSeconds / 86400
+        val h = (remaining.inWholeSeconds % 86400) / 3600
+        val m = (remaining.inWholeSeconds % 3600) / 60
         return when {
             d > 0 -> "${d}d ${h}h"
             h > 0 -> "${h}h ${m}m"
