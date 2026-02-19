@@ -89,7 +89,11 @@ class MainActivity : ComponentActivity() {
         UsageUpdateScheduler.schedule(applicationContext)
 
         setContent {
-            val isDark = if (themeMode == AppPreferences.THEME_SYSTEM) isSystemInDarkTheme() else true
+            val isDark = when (themeMode) {
+                AppPreferences.THEME_LIGHT -> false
+                AppPreferences.THEME_SYSTEM -> isSystemInDarkTheme()
+                else -> true
+            }
             ClaudeUsageTheme(darkTheme = isDark) {
                 val uiState by viewModel.uiState.collectAsState()
                 val isRefreshing by viewModel.isRefreshing.collectAsState()

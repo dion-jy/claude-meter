@@ -159,6 +159,16 @@ fun SettingsScreen(
                         modifier = Modifier.padding(horizontal = 16.dp)
                     )
                     ThemeRadioRow(
+                        title = "Light",
+                        subtitle = "Always use light theme",
+                        selected = themeMode == "light",
+                        onClick = { onThemeModeChange("light") }
+                    )
+                    Divider(
+                        color = ExtendedTheme.colors.dividerColor,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+                    ThemeRadioRow(
                         title = "System",
                         subtitle = "Follow system setting",
                         selected = themeMode == "system",

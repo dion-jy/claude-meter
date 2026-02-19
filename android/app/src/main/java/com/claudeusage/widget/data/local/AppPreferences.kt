@@ -33,7 +33,7 @@ class AppPreferences(context: Context) {
         get() = prefs.getBoolean(KEY_SHOW_EXTRA_USAGE, true)
         set(value) = prefs.edit().putBoolean(KEY_SHOW_EXTRA_USAGE, value).apply()
 
-    /** "dark" (default) or "system" */
+    /** "dark" (default), "light", or "system" */
     var themeMode: String
         get() = prefs.getString(KEY_THEME_MODE, THEME_DARK) ?: THEME_DARK
         set(value) = prefs.edit().putString(KEY_THEME_MODE, value).apply()
@@ -49,6 +49,7 @@ class AppPreferences(context: Context) {
         private const val KEY_THEME_MODE = "theme_mode"
 
         const val THEME_DARK = "dark"
+        const val THEME_LIGHT = "light"
         const val THEME_SYSTEM = "system"
     }
 }
