@@ -147,33 +147,27 @@ fun SettingsScreen(
                 colors = CardDefaults.cardColors(containerColor = ExtendedTheme.colors.cardBackground),
                 shape = RoundedCornerShape(16.dp)
             ) {
-                Column {
-                    ThemeRadioRow(
-                        title = "Dark",
-                        subtitle = "Always use dark theme",
-                        selected = themeMode == "dark",
-                        onClick = { onThemeModeChange("dark") }
-                    )
-                    Divider(
-                        color = ExtendedTheme.colors.dividerColor,
-                        modifier = Modifier.padding(horizontal = 16.dp)
-                    )
-                    ThemeRadioRow(
-                        title = "Light",
-                        subtitle = "Always use light theme",
-                        selected = themeMode == "light",
-                        onClick = { onThemeModeChange("light") }
-                    )
-                    Divider(
-                        color = ExtendedTheme.colors.dividerColor,
-                        modifier = Modifier.padding(horizontal = 16.dp)
-                    )
-                    ThemeRadioRow(
-                        title = "System",
-                        subtitle = "Follow system setting",
-                        selected = themeMode == "system",
-                        onClick = { onThemeModeChange("system") }
-                    )
+                SingleChoiceSegmentedButtonRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 10.dp)
+                ) {
+                    val options = listOf("dark" to "Dark", "light" to "Light", "system" to "System")
+                    options.forEachIndexed { index, (key, label) ->
+                        SegmentedButton(
+                            selected = themeMode == key,
+                            onClick = { onThemeModeChange(key) },
+                            shape = SegmentedButtonDefaults.itemShape(index, options.size),
+                            colors = SegmentedButtonDefaults.colors(
+                                activeContainerColor = ClaudePurple,
+                                activeContentColor = Color.White,
+                                inactiveContainerColor = Color.Transparent,
+                                inactiveContentColor = ExtendedTheme.colors.textSecondary
+                            )
+                        ) {
+                            Text(text = label, fontSize = 13.sp)
+                        }
+                    }
                 }
             }
 
@@ -372,42 +366,3 @@ private fun SettingsLinkRow(title: String, onClick: () -> Unit) {
     }
 }
 
-@Composable
-private fun ThemeRadioRow(
-    title: String,
-    subtitle: String,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                color = MaterialTheme.colorScheme.onBackground,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Medium
-            )
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = subtitle,
-                color = ExtendedTheme.colors.textMuted,
-                fontSize = 13.sp
-            )
-        }
-        RadioButton(
-            selected = selected,
-            onClick = onClick,
-            colors = RadioButtonDefaults.colors(
-                selectedColor = ClaudePurple,
-                unselectedColor = ExtendedTheme.colors.textSecondary
-            )
-        )
-    }
-}
