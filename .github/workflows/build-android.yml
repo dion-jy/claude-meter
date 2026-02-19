@@ -6,11 +6,19 @@ on:
     tags: ['v*']
     paths:
       - 'android/**'
+      - 'shared/**'
+      - 'build.gradle.kts'
+      - 'settings.gradle.kts'
+      - 'gradle.properties'
       - '.github/workflows/build-android.yml'
   pull_request:
     branches: [main]
     paths:
       - 'android/**'
+      - 'shared/**'
+      - 'build.gradle.kts'
+      - 'settings.gradle.kts'
+      - 'gradle.properties'
       - '.github/workflows/build-android.yml'
   workflow_dispatch:
 
@@ -37,7 +45,6 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Generate Gradle wrapper
-        working-directory: android
         run: gradle wrapper --gradle-version 8.5
 
       - name: Decode keystore
@@ -47,12 +54,10 @@ jobs:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
 
       - name: Build Debug APK
-        working-directory: android
-        run: ./gradlew assembleDebug --no-daemon --stacktrace --info 2>&1 | tail -200
+        run: ./gradlew :androidApp:assembleDebug --no-daemon --stacktrace --info 2>&1 | tail -200
 
       - name: Build Release APK
-        working-directory: android
-        run: ./gradlew assembleRelease --no-daemon --stacktrace
+        run: ./gradlew :androidApp:assembleRelease --no-daemon --stacktrace
         env:
           KEYSTORE_FILE: ${{ secrets.KEYSTORE_BASE64 != '' && 'release.keystore' || '' }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
@@ -60,8 +65,7 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
       - name: Build Release App Bundle (AAB)
-        working-directory: android
-        run: ./gradlew bundleRelease --no-daemon --stacktrace
+        run: ./gradlew :androidApp:bundleRelease --no-daemon --stacktrace
         env:
           KEYSTORE_FILE: ${{ secrets.KEYSTORE_BASE64 != '' && 'release.keystore' || '' }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
