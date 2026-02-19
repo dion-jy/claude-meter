@@ -3,7 +3,7 @@ package com.claudeusage.widget.data.local
 import android.content.Context
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
-import com.claudeusage.widget.data.model.Credentials
+import com.claudeusage.shared.model.Credentials
 
 class CredentialManager(context: Context) {
 

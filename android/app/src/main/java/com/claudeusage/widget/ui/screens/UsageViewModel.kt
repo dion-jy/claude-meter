@@ -3,12 +3,12 @@ package com.claudeusage.widget.ui.screens
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.claudeusage.shared.model.Credentials
+import com.claudeusage.shared.model.UsageData
+import com.claudeusage.shared.repository.AuthException
+import com.claudeusage.shared.repository.UsageRepository
 import com.claudeusage.widget.data.local.AppPreferences
 import com.claudeusage.widget.data.local.CredentialManager
-import com.claudeusage.widget.data.model.Credentials
-import com.claudeusage.widget.data.model.UsageData
-import com.claudeusage.widget.data.repository.AuthException
-import com.claudeusage.widget.data.repository.UsageRepository
 import com.claudeusage.widget.service.UsageNotificationService
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
