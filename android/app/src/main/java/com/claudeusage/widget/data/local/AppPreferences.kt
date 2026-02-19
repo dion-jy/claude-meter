@@ -33,6 +33,11 @@ class AppPreferences(context: Context) {
         get() = prefs.getBoolean(KEY_SHOW_EXTRA_USAGE, true)
         set(value) = prefs.edit().putBoolean(KEY_SHOW_EXTRA_USAGE, value).apply()
 
+    /** "dark" (default), "light", or "system" */
+    var themeMode: String
+        get() = prefs.getString(KEY_THEME_MODE, THEME_DARK) ?: THEME_DARK
+        set(value) = prefs.edit().putString(KEY_THEME_MODE, value).apply()
+
     companion object {
         private const val PREFS_NAME = "claude_app_preferences"
         private const val KEY_NOTIFICATION_ENABLED = "notification_enabled"
@@ -41,5 +46,10 @@ class AppPreferences(context: Context) {
         private const val KEY_SHOW_COWORK = "show_cowork"
         private const val KEY_SHOW_OAUTH_APPS = "show_oauth_apps"
         private const val KEY_SHOW_EXTRA_USAGE = "show_extra_usage"
+        private const val KEY_THEME_MODE = "theme_mode"
+
+        const val THEME_DARK = "dark"
+        const val THEME_LIGHT = "light"
+        const val THEME_SYSTEM = "system"
     }
 }

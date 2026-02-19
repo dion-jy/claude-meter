@@ -74,6 +74,9 @@ fun UsageProgressBar(
         )
     }
 
+    val progressTrackColor = ExtendedTheme.colors.progressTrack
+    val textMutedColor = ExtendedTheme.colors.textMuted
+
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -82,7 +85,7 @@ fun UsageProgressBar(
         ) {
             Text(
                 text = label,
-                color = TextSecondary,
+                color = ExtendedTheme.colors.textSecondary,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium
             )
@@ -118,7 +121,7 @@ fun UsageProgressBar(
 
                 // Track background
                 drawRoundRect(
-                    color = ProgressTrack,
+                    color = progressTrackColor,
                     cornerRadius = cornerRadius
                 )
 
@@ -146,7 +149,7 @@ fun UsageProgressBar(
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = formatDuration(remainingDuration),
-                color = TextMuted,
+                color = textMutedColor,
                 fontSize = 11.sp
             )
         }
@@ -160,6 +163,7 @@ fun CircularTimer(
     modifier: Modifier = Modifier
 ) {
     val size = 18.dp
+    val trackColor = ExtendedTheme.colors.progressTrack
 
     Canvas(modifier = modifier.size(size)) {
         val strokeWidth = 2.dp.toPx()
@@ -167,7 +171,7 @@ fun CircularTimer(
         val center = Offset(this.size.width / 2, this.size.height / 2)
 
         drawCircle(
-            color = ProgressTrack,
+            color = trackColor,
             radius = radius,
             center = center,
             style = Stroke(width = strokeWidth)

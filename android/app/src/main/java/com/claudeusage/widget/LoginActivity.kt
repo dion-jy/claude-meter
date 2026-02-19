@@ -162,16 +162,16 @@ private fun WebViewErrorScreen(
                 title = { Text("Sign in to Claude", fontSize = 18.sp) },
                 navigationIcon = {
                     IconButton(onClick = onClose) {
-                        Icon(Icons.Default.Close, contentDescription = "Close", tint = TextSecondary)
+                        Icon(Icons.Default.Close, contentDescription = "Close", tint = ExtendedTheme.colors.textSecondary)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = DarkBackground,
-                    titleContentColor = TextPrimary
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = MaterialTheme.colorScheme.onBackground
                 )
             )
         },
-        containerColor = DarkBackground
+        containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -184,19 +184,19 @@ private fun WebViewErrorScreen(
             Text(
                 text = "WebView Unavailable",
                 fontSize = 18.sp,
-                color = TextPrimary
+                color = MaterialTheme.colorScheme.onBackground
             )
             Spacer(modifier = Modifier.height(12.dp))
             Text(
                 text = message,
                 fontSize = 14.sp,
-                color = TextSecondary
+                color = ExtendedTheme.colors.textSecondary
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = "Please use \"Enter session key manually\" instead.",
                 fontSize = 14.sp,
-                color = TextSecondary
+                color = ExtendedTheme.colors.textSecondary
             )
         }
     }
@@ -228,17 +228,17 @@ private fun LoginWebViewScreen(
                         Icon(
                             Icons.Default.Close,
                             contentDescription = "Close",
-                            tint = TextSecondary
+                            tint = ExtendedTheme.colors.textSecondary
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = DarkBackground,
-                    titleContentColor = TextPrimary
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = MaterialTheme.colorScheme.onBackground
                 )
             )
         },
-        containerColor = DarkBackground
+        containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         Box(
             modifier = Modifier
@@ -325,7 +325,7 @@ private fun LoginWebViewScreen(
                         Text(
                             text = "Enter your email address to sign in.",
                             modifier = Modifier.padding(16.dp),
-                            color = TextPrimary,
+                            color = MaterialTheme.colorScheme.onBackground,
                             fontSize = 13.sp,
                             textAlign = TextAlign.Center
                         )

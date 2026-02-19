@@ -65,7 +65,7 @@ fun UsageScreen(
                             Icon(
                                 Icons.Default.Settings,
                                 contentDescription = "Settings",
-                                tint = TextSecondary
+                                tint = ExtendedTheme.colors.textSecondary
                             )
                         }
                         IconButton(onClick = onRefresh, enabled = !isRefreshing) {
@@ -79,7 +79,7 @@ fun UsageScreen(
                                 Icon(
                                     Icons.Default.Refresh,
                                     contentDescription = "Refresh",
-                                    tint = TextSecondary
+                                    tint = ExtendedTheme.colors.textSecondary
                                 )
                             }
                         }
@@ -87,18 +87,18 @@ fun UsageScreen(
                             Icon(
                                 Icons.Default.Logout,
                                 contentDescription = "Logout",
-                                tint = TextSecondary
+                                tint = ExtendedTheme.colors.textSecondary
                             )
                         }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = DarkBackground,
-                    titleContentColor = TextPrimary
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = MaterialTheme.colorScheme.onBackground
                 )
             )
         },
-        containerColor = DarkBackground
+        containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         Box(
             modifier = Modifier
@@ -131,7 +131,7 @@ private fun LoadingContent() {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(DarkBackground),
+            .background(MaterialTheme.colorScheme.background),
         contentAlignment = Alignment.Center
     ) {
         // Ring logo from the app icon
@@ -175,7 +175,7 @@ private fun LoadingContent() {
         // Small 4-point star at bottom-right
         Text(
             text = "\u2726",
-            color = TextMuted,
+            color = ExtendedTheme.colors.textMuted,
             fontSize = 16.sp,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
@@ -231,7 +231,7 @@ private fun LoginContent(
             text = "Claude Meter",
             fontSize = 22.sp,
             fontWeight = FontWeight.Bold,
-            color = TextPrimary
+            color = MaterialTheme.colorScheme.onBackground
         )
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -239,7 +239,7 @@ private fun LoginContent(
         Text(
             text = "Sign in to monitor your Claude usage",
             fontSize = 14.sp,
-            color = TextSecondary,
+            color = ExtendedTheme.colors.textSecondary,
             textAlign = TextAlign.Center
         )
 
@@ -270,7 +270,7 @@ private fun LoginContent(
                 .fillMaxWidth()
                 .height(48.dp),
             colors = ButtonDefaults.outlinedButtonColors(
-                contentColor = TextSecondary
+                contentColor = ExtendedTheme.colors.textSecondary
             ),
             shape = RoundedCornerShape(12.dp)
         ) {
@@ -291,7 +291,7 @@ private fun LoginContent(
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = ClaudePurple,
-                        unfocusedBorderColor = DarkSurfaceVariant,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.surfaceVariant,
                         focusedLabelColor = ClaudePurple,
                         cursorColor = ClaudePurple
                     ),
@@ -384,7 +384,7 @@ private fun UsageContent(
             Spacer(modifier = Modifier.height(20.dp))
             Text(
                 text = "Last updated at $lastUpdated",
-                color = TextMuted,
+                color = ExtendedTheme.colors.textMuted,
                 fontSize = 11.sp,
                 modifier = Modifier.fillMaxWidth(),
                 textAlign = TextAlign.Center
@@ -410,7 +410,7 @@ private fun UsageCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = DarkCard),
+        colors = CardDefaults.cardColors(containerColor = ExtendedTheme.colors.cardBackground),
         shape = RoundedCornerShape(16.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -422,13 +422,13 @@ private fun UsageCard(
                 Column {
                     Text(
                         text = title,
-                        color = TextPrimary,
+                        color = MaterialTheme.colorScheme.onBackground,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold
                     )
                     Text(
                         text = subtitle,
-                        color = TextMuted,
+                        color = ExtendedTheme.colors.textMuted,
                         fontSize = 11.sp
                     )
                 }
@@ -457,7 +457,7 @@ private fun MiniUsageCard(
     val isExtra = extraUsageInfo != null
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = DarkCard.copy(alpha = 0.7f)),
+        colors = CardDefaults.cardColors(containerColor = ExtendedTheme.colors.cardBackground.copy(alpha = 0.7f)),
         shape = RoundedCornerShape(12.dp)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
@@ -496,6 +496,8 @@ private fun ExtraUsageBar(
         label = "extra_progress"
     )
 
+    val progressTrackColor = ExtendedTheme.colors.progressTrack
+
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -504,7 +506,7 @@ private fun ExtraUsageBar(
         ) {
             Text(
                 text = label,
-                color = TextSecondary,
+                color = ExtendedTheme.colors.textSecondary,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium
             )
@@ -552,7 +554,7 @@ private fun ExtraUsageBar(
                 val cr = CornerRadius(5.dp.toPx())
 
                 drawRoundRect(
-                    color = ProgressTrack,
+                    color = progressTrackColor,
                     cornerRadius = cr
                 )
 
@@ -593,7 +595,7 @@ private fun ErrorContent(
         Text(
             text = message,
             fontSize = 14.sp,
-            color = TextSecondary,
+            color = ExtendedTheme.colors.textSecondary,
             textAlign = TextAlign.Center
         )
 

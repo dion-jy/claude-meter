@@ -9,6 +9,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
@@ -34,6 +35,7 @@ class MainActivity : ComponentActivity() {
 
     private var currentScreen by mutableStateOf(Screen.Usage)
     private var notificationEnabled by mutableStateOf(false)
+    private var themeMode by mutableStateOf(AppPreferences.THEME_DARK)
     private val metricVisibility = mutableStateMapOf<String, Boolean>()
 
     private val loginLauncher = registerForActivityResult(
@@ -65,6 +67,7 @@ class MainActivity : ComponentActivity() {
 
         appPreferences = AppPreferences(applicationContext)
         notificationEnabled = appPreferences.notificationEnabled
+        themeMode = appPreferences.themeMode
 
         // Load metric visibility from preferences
         metricVisibility["sonnet"] = appPreferences.showSonnet
@@ -86,7 +89,12 @@ class MainActivity : ComponentActivity() {
         UsageUpdateScheduler.schedule(applicationContext)
 
         setContent {
-            ClaudeUsageTheme {
+            val isDark = when (themeMode) {
+                AppPreferences.THEME_LIGHT -> false
+                AppPreferences.THEME_SYSTEM -> isSystemInDarkTheme()
+                else -> true
+            }
+            ClaudeUsageTheme(darkTheme = isDark) {
                 val uiState by viewModel.uiState.collectAsState()
                 val isRefreshing by viewModel.isRefreshing.collectAsState()
                 val lastUpdated by viewModel.lastUpdated.collectAsState()
@@ -130,6 +138,11 @@ class MainActivity : ComponentActivity() {
                             metricToggles = availableToggles,
                             onMetricToggle = { key, enabled ->
                                 handleMetricToggle(key, enabled)
+                            },
+                            themeMode = themeMode,
+                            onThemeModeChange = { mode ->
+                                themeMode = mode
+                                appPreferences.themeMode = mode
                             },
                             onBack = { currentScreen = Screen.Usage }
                         )

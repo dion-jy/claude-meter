@@ -46,6 +46,8 @@ fun SettingsScreen(
     onNotificationToggle: (Boolean) -> Unit,
     metricToggles: List<MetricToggle>,
     onMetricToggle: (String, Boolean) -> Unit,
+    themeMode: String,
+    onThemeModeChange: (String) -> Unit,
     onBack: () -> Unit
 ) {
     val uriHandler = LocalUriHandler.current
@@ -102,17 +104,17 @@ fun SettingsScreen(
                         Icon(
                             Icons.Default.ArrowBack,
                             contentDescription = "Back",
-                            tint = TextSecondary
+                            tint = ExtendedTheme.colors.textSecondary
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = DarkBackground,
-                    titleContentColor = TextPrimary
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = MaterialTheme.colorScheme.onBackground
                 )
             )
         },
-        containerColor = DarkBackground
+        containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -125,7 +127,7 @@ fun SettingsScreen(
             SectionLabel("Notification")
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = DarkCard),
+                colors = CardDefaults.cardColors(containerColor = ExtendedTheme.colors.cardBackground),
                 shape = RoundedCornerShape(16.dp)
             ) {
                 SettingsToggleRow(
@@ -138,11 +140,44 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
+            // Theme section
+            SectionLabel("Theme")
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = ExtendedTheme.colors.cardBackground),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                SingleChoiceSegmentedButtonRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 10.dp)
+                ) {
+                    val options = listOf("dark" to "Dark", "light" to "Light", "system" to "System")
+                    options.forEachIndexed { index, (key, label) ->
+                        SegmentedButton(
+                            selected = themeMode == key,
+                            onClick = { onThemeModeChange(key) },
+                            shape = SegmentedButtonDefaults.itemShape(index, options.size),
+                            colors = SegmentedButtonDefaults.colors(
+                                activeContainerColor = ClaudePurple,
+                                activeContentColor = Color.White,
+                                inactiveContainerColor = Color.Transparent,
+                                inactiveContentColor = ExtendedTheme.colors.textSecondary
+                            )
+                        ) {
+                            Text(text = label, fontSize = 13.sp)
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
             // Display section
             SectionLabel("Display")
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = DarkCard),
+                colors = CardDefaults.cardColors(containerColor = ExtendedTheme.colors.cardBackground),
                 shape = RoundedCornerShape(16.dp)
             ) {
                 Column {
@@ -154,7 +189,7 @@ fun SettingsScreen(
                         )
                         if (index < metricToggles.lastIndex) {
                             Divider(
-                                color = DarkBackground,
+                                color = ExtendedTheme.colors.dividerColor,
                                 modifier = Modifier.padding(horizontal = 16.dp)
                             )
                         }
@@ -168,7 +203,7 @@ fun SettingsScreen(
             SectionLabel("About")
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = DarkCard),
+                colors = CardDefaults.cardColors(containerColor = ExtendedTheme.colors.cardBackground),
                 shape = RoundedCornerShape(16.dp)
             ) {
                 Column {
@@ -211,7 +246,7 @@ fun SettingsScreen(
             // Disclaimer
             Text(
                 text = "This app is not affiliated with or endorsed by Anthropic.",
-                color = TextMuted,
+                color = ExtendedTheme.colors.textMuted,
                 fontSize = 11.sp,
                 modifier = Modifier.padding(horizontal = 4.dp)
             )
@@ -228,7 +263,7 @@ fun SettingsScreen(
 private fun SectionLabel(text: String) {
     Text(
         text = text,
-        color = TextSecondary,
+        color = ExtendedTheme.colors.textSecondary,
         fontSize = 13.sp,
         fontWeight = FontWeight.Medium,
         modifier = Modifier.padding(bottom = 8.dp, start = 4.dp)
@@ -238,7 +273,7 @@ private fun SectionLabel(text: String) {
 @Composable
 private fun SettingsDivider() {
     Divider(
-        color = DarkBackground,
+        color = ExtendedTheme.colors.dividerColor,
         modifier = Modifier.padding(horizontal = 16.dp)
     )
 }
@@ -260,7 +295,7 @@ private fun SettingsToggleRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                color = TextPrimary,
+                color = MaterialTheme.colorScheme.onBackground,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Medium
             )
@@ -268,7 +303,7 @@ private fun SettingsToggleRow(
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = subtitle,
-                    color = TextMuted,
+                    color = ExtendedTheme.colors.textMuted,
                     fontSize = 13.sp
                 )
             }
@@ -295,13 +330,13 @@ private fun SettingsInfoRow(title: String, value: String) {
     ) {
         Text(
             text = title,
-            color = TextPrimary,
+            color = MaterialTheme.colorScheme.onBackground,
             fontSize = 15.sp,
             fontWeight = FontWeight.Medium
         )
         Text(
             text = value,
-            color = TextMuted,
+            color = ExtendedTheme.colors.textMuted,
             fontSize = 14.sp
         )
     }
@@ -319,14 +354,15 @@ private fun SettingsLinkRow(title: String, onClick: () -> Unit) {
     ) {
         Text(
             text = title,
-            color = TextPrimary,
+            color = MaterialTheme.colorScheme.onBackground,
             fontSize = 15.sp,
             fontWeight = FontWeight.Medium
         )
         Text(
             text = "\u203A",
-            color = TextMuted,
+            color = ExtendedTheme.colors.textMuted,
             fontSize = 18.sp
         )
     }
 }
+

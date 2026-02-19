@@ -1,10 +1,15 @@
 package com.claudeusage.widget.ui.theme
 
 import android.app.Activity
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
@@ -23,23 +28,85 @@ private val DarkColorScheme = darkColorScheme(
     error = StatusCritical
 )
 
+private val LightColorScheme = lightColorScheme(
+    primary = ClaudePurple,
+    onPrimary = Color.White,
+    primaryContainer = ClaudePurpleLight,
+    secondary = ClaudePurpleDark,
+    background = LightBackground,
+    surface = LightSurface,
+    surfaceVariant = LightSurfaceVariant,
+    onBackground = LightTextPrimary,
+    onSurface = LightTextPrimary,
+    onSurfaceVariant = LightTextSecondary,
+    error = StatusCritical
+)
+
+data class ExtendedColors(
+    val cardBackground: Color,
+    val textMuted: Color,
+    val textSecondary: Color,
+    val progressTrack: Color,
+    val dividerColor: Color
+)
+
+val LocalExtendedColors = staticCompositionLocalOf {
+    ExtendedColors(
+        cardBackground = DarkCard,
+        textMuted = TextMuted,
+        textSecondary = TextSecondary,
+        progressTrack = ProgressTrack,
+        dividerColor = DarkBackground
+    )
+}
+
+private val DarkExtendedColors = ExtendedColors(
+    cardBackground = DarkCard,
+    textMuted = TextMuted,
+    textSecondary = TextSecondary,
+    progressTrack = ProgressTrack,
+    dividerColor = DarkBackground
+)
+
+private val LightExtendedColors = ExtendedColors(
+    cardBackground = LightCard,
+    textMuted = LightTextMuted,
+    textSecondary = LightTextSecondary,
+    progressTrack = LightProgressTrack,
+    dividerColor = LightProgressTrack
+)
+
+object ExtendedTheme {
+    val colors: ExtendedColors
+        @Composable
+        get() = LocalExtendedColors.current
+}
+
 @Composable
-fun ClaudeUsageTheme(content: @Composable () -> Unit) {
+fun ClaudeUsageTheme(
+    darkTheme: Boolean = true,
+    content: @Composable () -> Unit
+) {
+    val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
+    val extendedColors = if (darkTheme) DarkExtendedColors else LightExtendedColors
+
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            window.statusBarColor = DarkBackground.toArgb()
-            window.navigationBarColor = DarkBackground.toArgb()
+            window.statusBarColor = colorScheme.background.toArgb()
+            window.navigationBarColor = colorScheme.background.toArgb()
             WindowCompat.getInsetsController(window, view).apply {
-                isAppearanceLightStatusBars = false
-                isAppearanceLightNavigationBars = false
+                isAppearanceLightStatusBars = !darkTheme
+                isAppearanceLightNavigationBars = !darkTheme
             }
         }
     }
 
-    MaterialTheme(
-        colorScheme = DarkColorScheme,
-        content = content
-    )
+    CompositionLocalProvider(LocalExtendedColors provides extendedColors) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            content = content
+        )
+    }
 }
