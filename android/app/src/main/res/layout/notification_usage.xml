@@ -18,7 +18,7 @@
             android:layout_height="wrap_content"
             android:text="5h"
             android:textSize="11sp"
-            android:textColor="#AAAAAA" />
+            android:textAppearance="@style/TextAppearance.Compat.Notification.Info" />
 
         <ProgressBar
             android:id="@+id/progress_5h"
@@ -37,7 +37,7 @@
             android:layout_marginStart="8dp"
             android:text="0.0%"
             android:textSize="11sp"
-            android:textColor="#DDDDDD"
+            android:textAppearance="@style/TextAppearance.Compat.Notification.Title"
             android:textAlignment="textEnd" />
 
         <TextView
@@ -47,7 +47,7 @@
             android:layout_marginStart="6dp"
             android:text=""
             android:textSize="10sp"
-            android:textColor="#888888" />
+            android:textAppearance="@style/TextAppearance.Compat.Notification.Info" />
     </LinearLayout>
 
     <LinearLayout
@@ -68,7 +68,7 @@
             android:layout_height="wrap_content"
             android:text="7d"
             android:textSize="11sp"
-            android:textColor="#AAAAAA" />
+            android:textAppearance="@style/TextAppearance.Compat.Notification.Info" />
 
         <ProgressBar
             android:id="@+id/progress_7d"
@@ -87,7 +87,7 @@
             android:layout_marginStart="8dp"
             android:text="0.0%"
             android:textSize="11sp"
-            android:textColor="#DDDDDD"
+            android:textAppearance="@style/TextAppearance.Compat.Notification.Title"
             android:textAlignment="textEnd" />
 
         <TextView
@@ -97,6 +97,6 @@
             android:layout_marginStart="6dp"
             android:text=""
             android:textSize="10sp"
-            android:textColor="#888888" />
+            android:textAppearance="@style/TextAppearance.Compat.Notification.Info" />
     </LinearLayout>
 </LinearLayout>
