@@ -1,0 +1,42 @@
+name: ClaudeMeter
+options:
+  bundleIdPrefix: com.claudeusage
+  deploymentTarget:
+    iOS: "16.0"
+  xcodeVersion: "16.0"
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+
+targets:
+  ClaudeMeter:
+    type: application
+    platform: iOS
+    sources:
+      - ClaudeMeter
+    settings:
+      base:
+        INFOPLIST_FILE: ClaudeMeter/Info.plist
+        PRODUCT_BUNDLE_IDENTIFIER: com.claudeusage.ClaudeMeter
+        TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+    entitlements:
+      path: ClaudeMeter/ClaudeMeter.entitlements
+
+  ClaudeMeterWidget:
+    type: app-extension
+    platform: iOS
+    sources:
+      - ClaudeMeterWidget
+      - path: ClaudeMeter/Services/KeychainManager.swift
+      - path: ClaudeMeter/Services/APIClient.swift
+      - path: ClaudeMeter/Theme/AppColors.swift
+    settings:
+      base:
+        INFOPLIST_FILE: ClaudeMeterWidget/Info.plist
+        PRODUCT_BUNDLE_IDENTIFIER: com.claudeusage.ClaudeMeter.widget
+        TARGETED_DEVICE_FAMILY: "1"
+    dependencies:
+      - target: ClaudeMeter

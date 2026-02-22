@@ -78,6 +78,9 @@ android {
 }
 
 dependencies {
+    // Shared KMP module
+    implementation(project(":shared"))
+
     // Core
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
@@ -98,9 +101,6 @@ dependencies {
 
     // WebView
     implementation("androidx.webkit:webkit:1.10.0")
-
-    // Network
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
     // Encrypted SharedPreferences
     implementation("androidx.security:security-crypto:1.1.0-alpha06")

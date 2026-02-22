@@ -7,7 +7,6 @@ pluginManagement {
 }
 
 dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
         google()
         mavenCentral()
@@ -15,4 +14,7 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "ClaudeMeter"
-include(":app")
+include(":shared")
+include(":androidApp")
+
+project(":androidApp").projectDir = file("android/app")
