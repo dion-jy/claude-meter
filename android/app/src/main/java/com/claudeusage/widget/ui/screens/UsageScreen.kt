@@ -509,18 +509,21 @@ private fun ExtraUsageBar(
             )
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                if (info.balanceCents != null) {
+                val balance = info.balanceCents
+                val used = info.usedCents
+                val limit = info.limitCents
+                if (balance != null) {
                     Text(
-                        text = "Bal \$${info.balanceCents / 100}",
+                        text = "Bal \$${balance / 100}",
                         color = StatusExtraLight,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.padding(end = 8.dp)
                     )
                 }
-                if (info.usedCents != null && info.limitCents != null) {
+                if (used != null && limit != null) {
                     Text(
-                        text = "\$${info.usedCents / 100}/\$${info.limitCents / 100}",
+                        text = "\$${used / 100}/\$${limit / 100}",
                         color = barColor,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
