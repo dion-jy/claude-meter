@@ -79,18 +79,20 @@ class UsageNotificationService : Service() {
     private fun buildUsageNotification(data: UsageData): Notification {
         val remoteViews = RemoteViews(packageName, R.layout.notification_usage)
 
-        if (data.fiveHour != null) {
-            val progress = data.fiveHour.utilization.toInt().coerceIn(0, 100)
+        val fiveHour = data.fiveHour
+        if (fiveHour != null) {
+            val progress = fiveHour.utilization.toInt().coerceIn(0, 100)
             remoteViews.setProgressBar(R.id.progress_5h, 100, progress, false)
-            remoteViews.setTextViewText(R.id.percent_5h, String.format("%.1f%%", data.fiveHour.utilization))
-            remoteViews.setTextViewText(R.id.time_5h, formatRemaining(data.fiveHour))
+            remoteViews.setTextViewText(R.id.percent_5h, String.format("%.1f%%", fiveHour.utilization))
+            remoteViews.setTextViewText(R.id.time_5h, formatRemaining(fiveHour))
         }
 
-        if (data.sevenDay != null) {
-            val progress = data.sevenDay.utilization.toInt().coerceIn(0, 100)
+        val sevenDay = data.sevenDay
+        if (sevenDay != null) {
+            val progress = sevenDay.utilization.toInt().coerceIn(0, 100)
             remoteViews.setProgressBar(R.id.progress_7d, 100, progress, false)
-            remoteViews.setTextViewText(R.id.percent_7d, String.format("%.1f%%", data.sevenDay.utilization))
-            remoteViews.setTextViewText(R.id.time_7d, formatRemaining(data.sevenDay))
+            remoteViews.setTextViewText(R.id.percent_7d, String.format("%.1f%%", sevenDay.utilization))
+            remoteViews.setTextViewText(R.id.time_7d, formatRemaining(sevenDay))
         }
 
         val intent = Intent(this, MainActivity::class.java).apply {
