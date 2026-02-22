@@ -54,7 +54,13 @@ jobs:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
 
       - name: Build Debug APK
-        run: ./gradlew :androidApp:assembleDebug --no-daemon --stacktrace
+        run: |
+          ./gradlew :androidApp:assembleDebug --no-daemon 2>&1 | tee build-debug.log
+          exit ${PIPESTATUS[0]}
+
+      - name: Show compile errors
+        if: failure()
+        run: grep -E "^e:|error:" build-debug.log || echo "No error lines found in log"
 
       - name: Build Release APK
         run: ./gradlew :androidApp:assembleRelease --no-daemon --stacktrace
