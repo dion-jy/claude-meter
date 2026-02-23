@@ -40,10 +40,25 @@ jobs:
             -scheme ClaudeMeter \
             -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
             -configuration Debug \
+            -derivedDataPath build/SimulatorDerivedData \
             CODE_SIGN_IDENTITY="-" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
             | tee build.log
+
+      - name: Package Simulator .app for Appetize
+        working-directory: iosApp
+        run: |
+          APP_PATH=$(find build/SimulatorDerivedData -name "ClaudeMeter.app" -type d | head -1)
+          if [ -z "$APP_PATH" ]; then
+            echo "Error: ClaudeMeter.app not found"
+            find build/SimulatorDerivedData -name "*.app" -type d
+            exit 1
+          fi
+          echo "Found simulator app at: $APP_PATH"
+          cd "$(dirname "$APP_PATH")"
+          zip -r "$GITHUB_WORKSPACE/iosApp/build/ClaudeMeter-simulator.zip" "$(basename "$APP_PATH")"
+          echo "Simulator zip created: $(ls -lh $GITHUB_WORKSPACE/iosApp/build/ClaudeMeter-simulator.zip)"
 
       - name: Build Release .app for device
         working-directory: iosApp
@@ -82,3 +97,43 @@ jobs:
           name: ClaudeMeter-iOS-unsigned
           path: iosApp/build/ClaudeMeter-unsigned.ipa
           if-no-files-found: error
+
+      - name: Upload Simulator build
+        uses: actions/upload-artifact@v4
+        with:
+          name: ClaudeMeter-iOS-Simulator
+          path: iosApp/build/ClaudeMeter-simulator.zip
+          if-no-files-found: error
+
+      - name: Upload to Appetize.io
+        if: github.ref == 'refs/heads/main' && secrets.APPETIZE_API_TOKEN != ''
+        working-directory: iosApp
+        run: |
+          if [ -z "${{ secrets.APPETIZE_PUBLIC_KEY }}" ]; then
+            echo "### First upload - registering new app on Appetize.io"
+            RESPONSE=$(curl -s "https://api.appetize.io/v2/apps" \
+              -H "Authorization: Bearer ${{ secrets.APPETIZE_API_TOKEN }}" \
+              -F "file=@build/ClaudeMeter-simulator.zip" \
+              -F "platform=ios")
+            PUBLIC_KEY=$(echo "$RESPONSE" | jq -r '.publicKey // empty')
+            if [ -n "$PUBLIC_KEY" ]; then
+              echo "### Appetize app registered" >> $GITHUB_STEP_SUMMARY
+              echo "- **Public Key**: \`$PUBLIC_KEY\`" >> $GITHUB_STEP_SUMMARY
+              echo "- **URL**: https://appetize.io/app/$PUBLIC_KEY" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "> Save this public key as \`APPETIZE_PUBLIC_KEY\` in GitHub Secrets for future updates." >> $GITHUB_STEP_SUMMARY
+            else
+              echo "Upload failed. Response:"
+              echo "$RESPONSE"
+              exit 1
+            fi
+          else
+            echo "### Updating existing app on Appetize.io"
+            curl -s "https://api.appetize.io/v2/apps/${{ secrets.APPETIZE_PUBLIC_KEY }}" \
+              -X PUT \
+              -H "Authorization: Bearer ${{ secrets.APPETIZE_API_TOKEN }}" \
+              -F "file=@build/ClaudeMeter-simulator.zip" \
+              -F "platform=ios"
+            echo "### Appetize app updated" >> $GITHUB_STEP_SUMMARY
+            echo "- **URL**: https://appetize.io/app/${{ secrets.APPETIZE_PUBLIC_KEY }}" >> $GITHUB_STEP_SUMMARY
+          fi
