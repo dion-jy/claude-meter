@@ -32,7 +32,7 @@ jobs:
         working-directory: iosApp
         run: xcodegen generate
 
-      - name: Build iOS app (Debug)
+      - name: Build iOS app (Debug - Simulator)
         working-directory: iosApp
         run: |
           xcodebuild build \
@@ -45,38 +45,40 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             | tee build.log
 
-      - name: Build iOS app (Release - unsigned)
+      - name: Build Release .app for device
         working-directory: iosApp
         run: |
           xcodebuild build \
             -project ClaudeMeter.xcodeproj \
             -scheme ClaudeMeter \
-            -destination 'generic/platform=iOS' \
+            -sdk iphoneos \
             -configuration Release \
+            -derivedDataPath build/DerivedData \
             CODE_SIGN_IDENTITY="-" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
             ARCHS="arm64" \
             | tee build.log
 
-      - name: Archive iOS app
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Package unsigned IPA
         working-directory: iosApp
         run: |
-          xcodebuild archive \
-            -project ClaudeMeter.xcodeproj \
-            -scheme ClaudeMeter \
-            -archivePath build/ClaudeMeter.xcarchive \
-            -destination 'generic/platform=iOS' \
-            CODE_SIGN_IDENTITY="-" \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO \
-            | tee build.log
+          APP_PATH=$(find build/DerivedData -name "ClaudeMeter.app" -type d | head -1)
+          if [ -z "$APP_PATH" ]; then
+            echo "Error: ClaudeMeter.app not found"
+            find build/DerivedData -name "*.app" -type d
+            exit 1
+          fi
+          echo "Found app at: $APP_PATH"
+          mkdir -p build/Payload
+          cp -r "$APP_PATH" build/Payload/
+          cd build
+          zip -r ClaudeMeter-unsigned.ipa Payload/
+          echo "IPA created: $(ls -lh ClaudeMeter-unsigned.ipa)"
 
-      - name: Upload build artifacts
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
-          name: ClaudeMeter-iOS-Archive
-          path: iosApp/build/ClaudeMeter.xcarchive
-          if-no-files-found: warn
+          name: ClaudeMeter-iOS-unsigned
+          path: iosApp/build/ClaudeMeter-unsigned.ipa
+          if-no-files-found: error
