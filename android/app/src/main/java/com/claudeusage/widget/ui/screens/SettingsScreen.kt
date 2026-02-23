@@ -44,6 +44,8 @@ data class MetricToggle(
 fun SettingsScreen(
     notificationEnabled: Boolean,
     onNotificationToggle: (Boolean) -> Unit,
+    coachEnabled: Boolean = true,
+    onCoachToggle: (Boolean) -> Unit = {},
     metricToggles: List<MetricToggle>,
     onMetricToggle: (String, Boolean) -> Unit,
     themeMode: String,
@@ -130,12 +132,24 @@ fun SettingsScreen(
                 colors = CardDefaults.cardColors(containerColor = ExtendedTheme.colors.cardBackground),
                 shape = RoundedCornerShape(16.dp)
             ) {
-                SettingsToggleRow(
-                    title = "Persistent Notification",
-                    subtitle = "Show usage in the notification bar",
-                    checked = notificationEnabled,
-                    onCheckedChange = onNotificationToggle
-                )
+                Column {
+                    SettingsToggleRow(
+                        title = "Persistent Notification",
+                        subtitle = "Show usage in the notification bar",
+                        checked = notificationEnabled,
+                        onCheckedChange = onNotificationToggle
+                    )
+                    Divider(
+                        color = ExtendedTheme.colors.dividerColor,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+                    SettingsToggleRow(
+                        title = "Productivity Coach",
+                        subtitle = "Smart usage tips & reset alerts",
+                        checked = coachEnabled,
+                        onCheckedChange = onCoachToggle
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
