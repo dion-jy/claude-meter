@@ -197,13 +197,13 @@ private fun parseUsageMetric(obj: JsonObject?): UsageMetric? {
 private fun parseUsageData(jsonObj: JsonObject): UsageData {
     val keys = jsonObj.keys.toList()
     return UsageData(
-        fiveHour = parseUsageMetric(jsonObj["five_hour"]?.jsonObject),
-        sevenDay = parseUsageMetric(jsonObj["seven_day"]?.jsonObject),
-        sevenDaySonnet = parseUsageMetric(jsonObj["seven_day_sonnet"]?.jsonObject),
-        sevenDayOpus = parseUsageMetric(jsonObj["seven_day_opus"]?.jsonObject),
-        sevenDayCowork = parseUsageMetric(jsonObj["seven_day_cowork"]?.jsonObject),
-        sevenDayOauthApps = parseUsageMetric(jsonObj["seven_day_oauth_apps"]?.jsonObject),
-        extraUsage = parseUsageMetric(jsonObj["extra_usage"]?.jsonObject),
+        fiveHour = parseUsageMetric(jsonObj["five_hour"] as? JsonObject),
+        sevenDay = parseUsageMetric(jsonObj["seven_day"] as? JsonObject),
+        sevenDaySonnet = parseUsageMetric(jsonObj["seven_day_sonnet"] as? JsonObject),
+        sevenDayOpus = parseUsageMetric(jsonObj["seven_day_opus"] as? JsonObject),
+        sevenDayCowork = parseUsageMetric(jsonObj["seven_day_cowork"] as? JsonObject),
+        sevenDayOauthApps = parseUsageMetric(jsonObj["seven_day_oauth_apps"] as? JsonObject),
+        extraUsage = parseUsageMetric(jsonObj["extra_usage"] as? JsonObject),
         rawKeys = keys
     )
 }
