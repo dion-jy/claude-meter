@@ -109,7 +109,7 @@ class UsageViewModel(application: Application) : AndroidViewModel(application) {
             onSuccess = { data ->
                 _uiState.value = UiState.Success(data)
                 _lastUpdated.value = formatLastUpdated()
-                startAutoRefresh()
+                ensureAutoRefreshRunning()
                 if (appPreferences.notificationEnabled) {
                     UsageNotificationService.start(getApplication())
                 }
@@ -134,8 +134,8 @@ class UsageViewModel(application: Application) : AndroidViewModel(application) {
         )
     }
 
-    private fun startAutoRefresh() {
-        autoRefreshJob?.cancel()
+    private fun ensureAutoRefreshRunning() {
+        if (autoRefreshJob?.isActive == true) return
         autoRefreshJob = viewModelScope.launch {
             while (isActive) {
                 delay(UPDATE_INTERVAL_MS)

@@ -15,6 +15,7 @@ import com.claudeusage.widget.R
 import com.claudeusage.widget.data.local.CredentialManager
 import com.claudeusage.widget.data.model.UsageData
 import com.claudeusage.widget.data.model.UsageMetric
+import com.claudeusage.widget.data.repository.AuthException
 import com.claudeusage.widget.data.repository.UsageRepository
 import kotlinx.coroutines.*
 
@@ -22,11 +23,14 @@ class UsageNotificationService : Service() {
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val repository = UsageRepository()
+    private lateinit var credentialManager: CredentialManager
+    private var consecutiveFailures = 0
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
         super.onCreate()
+        credentialManager = CredentialManager(applicationContext)
         createNotificationChannel()
         startForeground(NOTIFICATION_ID, buildSimpleNotification("Loading usage data..."))
         startPolling()
@@ -49,20 +53,37 @@ class UsageNotificationService : Service() {
         scope.launch {
             while (isActive) {
                 updateNotification()
-                delay(UPDATE_INTERVAL_MS)
+                val backoffDelay = if (consecutiveFailures > 0) {
+                    // Exponential backoff: 3min, 6min, 12min, capped at 30min
+                    val multiplier = (1L shl consecutiveFailures.coerceAtMost(3))
+                    (UPDATE_INTERVAL_MS * multiplier).coerceAtMost(MAX_BACKOFF_MS)
+                } else {
+                    UPDATE_INTERVAL_MS
+                }
+                delay(backoffDelay)
             }
         }
     }
 
     private suspend fun updateNotification() {
-        val credentialManager = CredentialManager(applicationContext)
-        val credentials = credentialManager.getCredentials() ?: return
+        val credentials = credentialManager.getCredentials()
+        if (credentials == null) {
+            stopSelf()
+            return
+        }
 
         val result = repository.fetchUsageData(credentials)
         result.onSuccess { data ->
+            consecutiveFailures = 0
             val notification = buildUsageNotification(data)
             val manager = getSystemService(NotificationManager::class.java)
             manager.notify(NOTIFICATION_ID, notification)
+        }
+        result.onFailure { error ->
+            consecutiveFailures++
+            if (error is AuthException) {
+                stopSelf()
+            }
         }
     }
 
@@ -145,6 +166,7 @@ class UsageNotificationService : Service() {
         const val CHANNEL_ID = "claude_usage_channel"
         const val NOTIFICATION_ID = 1001
         const val UPDATE_INTERVAL_MS = 3 * 60 * 1000L // 3 minutes
+        const val MAX_BACKOFF_MS = 30 * 60 * 1000L // 30 minutes
 
         fun start(context: Context) {
             val intent = Intent(context, UsageNotificationService::class.java)

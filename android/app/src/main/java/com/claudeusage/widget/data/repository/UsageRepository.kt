@@ -17,11 +17,7 @@ import java.util.concurrent.TimeUnit
 
 class UsageRepository {
 
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .followRedirects(true)
-        .build()
+    private val client = sharedClient
 
     suspend fun fetchUsageData(credentials: Credentials): Result<UsageData> =
         withContext(Dispatchers.IO) {
@@ -174,6 +170,14 @@ class UsageRepository {
         const val BASE_URL = "https://claude.ai"
         const val USER_AGENT =
             "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Mobile Safari/537.36"
+
+        private val sharedClient: OkHttpClient by lazy {
+            OkHttpClient.Builder()
+                .connectTimeout(30, TimeUnit.SECONDS)
+                .readTimeout(30, TimeUnit.SECONDS)
+                .followRedirects(true)
+                .build()
+        }
     }
 }
 
