@@ -138,6 +138,7 @@ class UsageNotificationService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        repository.cancelPendingRequests()
         scope.cancel()
     }
 

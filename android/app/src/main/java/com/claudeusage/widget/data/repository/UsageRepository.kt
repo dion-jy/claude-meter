@@ -165,6 +165,10 @@ class UsageRepository {
             }
         }
 
+    fun cancelPendingRequests() {
+        client.dispatcher.cancelAll()
+    }
+
     suspend fun validateSession(credentials: Credentials): Boolean =
         withContext(Dispatchers.IO) {
             fetchUsageData(credentials).isSuccess
