@@ -25,8 +25,16 @@ jobs:
       - name: Show Xcode version
         run: xcodebuild -version
 
+      - name: List available simulators
+        run: xcrun simctl list devices available
+
       - name: Install XcodeGen
-        run: brew install xcodegen
+        run: |
+          for i in 1 2 3 4; do
+            brew install xcodegen && break
+            echo "Attempt $i failed, retrying in $((2**i))s..."
+            sleep $((2**i))
+          done
 
       - name: Generate Xcode project
         working-directory: iosApp
@@ -38,7 +46,7 @@ jobs:
           xcodebuild build \
             -project ClaudeMeter.xcodeproj \
             -scheme ClaudeMeter \
-            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=latest' \
             -configuration Debug \
             -derivedDataPath build/SimulatorDerivedData \
             CODE_SIGN_IDENTITY="-" \
