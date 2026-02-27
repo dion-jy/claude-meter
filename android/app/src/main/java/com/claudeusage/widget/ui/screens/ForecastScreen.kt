@@ -1,7 +1,10 @@
 package com.claudeusage.widget.ui.screens
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -10,7 +13,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -18,15 +21,21 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.*
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.claudeusage.widget.data.local.UsageHistoryEntry
 import com.claudeusage.widget.data.model.UsageData
 import com.claudeusage.widget.ui.theme.*
+import kotlinx.coroutines.launch
 import java.time.Duration
 import java.time.Instant
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,6 +66,45 @@ fun ForecastScreen(
     val depletionHoursFromNow = if (burningRatePerHour > 0) {
         (100.0 - weeklyUtil) / burningRatePerHour
     } else Double.MAX_VALUE
+
+    // Swipe-back gesture
+    val coroutineScope = rememberCoroutineScope()
+    val offsetX = remember { Animatable(0f) }
+    val screenWidthPx = with(LocalDensity.current) {
+        LocalConfiguration.current.screenWidthDp.dp.toPx()
+    }
+    val swipeThreshold = screenWidthPx * 0.3f
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .offset { IntOffset(offsetX.value.roundToInt(), 0) }
+            .pointerInput(Unit) {
+                detectHorizontalDragGestures(
+                    onDragEnd = {
+                        coroutineScope.launch {
+                            if (offsetX.value > swipeThreshold) {
+                                offsetX.animateTo(screenWidthPx, tween(200))
+                                onBack()
+                            } else {
+                                offsetX.animateTo(0f, tween(200))
+                            }
+                        }
+                    },
+                    onDragCancel = {
+                        coroutineScope.launch {
+                            offsetX.animateTo(0f, tween(200))
+                        }
+                    },
+                    onHorizontalDrag = { _, dragAmount ->
+                        coroutineScope.launch {
+                            val newValue = (offsetX.value + dragAmount).coerceAtLeast(0f)
+                            offsetX.snapTo(newValue)
+                        }
+                    }
+                )
+            }
+    ) {
 
     Scaffold(
         topBar = {
@@ -328,6 +376,8 @@ fun ForecastScreen(
             Spacer(modifier = Modifier.height(24.dp))
         }
     }
+
+    } // Box
 }
 
 @Composable
