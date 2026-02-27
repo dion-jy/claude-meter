@@ -24,6 +24,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.claudeusage.widget.ui.components.BannerAd
 import com.claudeusage.widget.ui.theme.*
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -210,6 +211,11 @@ fun SettingsScreen(
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Banner Ad
+            BannerAd(modifier = Modifier.fillMaxWidth())
 
             Spacer(modifier = Modifier.height(24.dp))
 
