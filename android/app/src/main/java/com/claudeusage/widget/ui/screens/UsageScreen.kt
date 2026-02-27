@@ -14,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -47,7 +48,8 @@ fun UsageScreen(
     onLogout: () -> Unit,
     onLoginClick: () -> Unit,
     onManualLogin: (String) -> Unit,
-    onSettingsClick: () -> Unit
+    onSettingsClick: () -> Unit,
+    onForecastClick: () -> Unit = {}
 ) {
     Scaffold(
         topBar = {
@@ -61,6 +63,13 @@ fun UsageScreen(
                 },
                 actions = {
                     if (uiState is UiState.Success) {
+                        IconButton(onClick = onForecastClick) {
+                            Icon(
+                                Icons.Default.ShowChart,
+                                contentDescription = "Usage Forecast",
+                                tint = ExtendedTheme.colors.textSecondary
+                            )
+                        }
                         IconButton(onClick = onSettingsClick) {
                             Icon(
                                 Icons.Default.Settings,

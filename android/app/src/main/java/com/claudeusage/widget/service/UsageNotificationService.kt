@@ -25,6 +25,13 @@ class UsageNotificationService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_FORCE_UPDATE) {
+            scope.launch { updateNotification() }
+        }
+        return START_STICKY
+    }
+
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
@@ -146,6 +153,7 @@ class UsageNotificationService : Service() {
         const val CHANNEL_ID = "claude_usage_channel"
         const val NOTIFICATION_ID = 1001
         const val UPDATE_INTERVAL_MS = 3 * 60 * 1000L // 3 minutes
+        private const val ACTION_FORCE_UPDATE = "com.claudeusage.widget.FORCE_UPDATE"
 
         fun start(context: Context) {
             val intent = Intent(context, UsageNotificationService::class.java)
@@ -155,6 +163,13 @@ class UsageNotificationService : Service() {
         fun stop(context: Context) {
             val intent = Intent(context, UsageNotificationService::class.java)
             context.stopService(intent)
+        }
+
+        fun forceUpdate(context: Context) {
+            val intent = Intent(context, UsageNotificationService::class.java).apply {
+                action = ACTION_FORCE_UPDATE
+            }
+            context.startForegroundService(intent)
         }
     }
 }
