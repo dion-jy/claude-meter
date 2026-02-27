@@ -135,7 +135,7 @@ class UsageViewModel(application: Application) : AndroidViewModel(application) {
                 _lastUpdated.value = formatLastUpdated()
                 startAutoRefresh()
                 if (appPreferences.notificationEnabled) {
-                    UsageNotificationService.start(getApplication())
+                    UsageNotificationService.forceUpdate(getApplication())
                 }
                 // Coach features
                 if (appPreferences.coachEnabled) {
