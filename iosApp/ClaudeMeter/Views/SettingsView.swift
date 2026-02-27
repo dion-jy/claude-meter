@@ -49,6 +49,20 @@ struct SettingsView: View {
                                 .fill(Color.darkCard)
                         )
 
+                        // Notification section
+                        SectionLabel(text: "Notification")
+                        VStack(spacing: 0) {
+                            SettingsToggleRow(
+                                title: "Productivity Coach",
+                                subtitle: "Smart usage tips & reset alerts",
+                                isOn: $preferences.coachEnabled
+                            )
+                        }
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(Color.darkCard)
+                        )
+
                         // About section
                         SectionLabel(text: "About")
                         VStack(spacing: 0) {

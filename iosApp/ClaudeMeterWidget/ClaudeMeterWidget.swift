@@ -8,15 +8,16 @@ struct UsageEntry: TimelineEntry {
     let fiveHourUtilization: Double?
     let sevenDayUtilization: Double?
     let isLoggedIn: Bool
+    let coachMessage: String?
 }
 
 struct UsageTimelineProvider: TimelineProvider {
     func placeholder(in context: Context) -> UsageEntry {
-        UsageEntry(date: Date(), fiveHourUtilization: 42.5, sevenDayUtilization: 68.3, isLoggedIn: true)
+        UsageEntry(date: Date(), fiveHourUtilization: 42.5, sevenDayUtilization: 68.3, isLoggedIn: true, coachMessage: nil)
     }
 
     func getSnapshot(in context: Context, completion: @escaping (UsageEntry) -> Void) {
-        let entry = UsageEntry(date: Date(), fiveHourUtilization: 42.5, sevenDayUtilization: 68.3, isLoggedIn: true)
+        let entry = UsageEntry(date: Date(), fiveHourUtilization: 42.5, sevenDayUtilization: 68.3, isLoggedIn: true, coachMessage: nil)
         completion(entry)
     }
 
@@ -24,7 +25,7 @@ struct UsageTimelineProvider: TimelineProvider {
         Task {
             let keychain = KeychainManager.shared
             guard let credentials = keychain.getCredentials() else {
-                let entry = UsageEntry(date: Date(), fiveHourUtilization: nil, sevenDayUtilization: nil, isLoggedIn: false)
+                let entry = UsageEntry(date: Date(), fiveHourUtilization: nil, sevenDayUtilization: nil, isLoggedIn: false, coachMessage: nil)
                 let timeline = Timeline(entries: [entry], policy: .after(Date().addingTimeInterval(30 * 60)))
                 completion(timeline)
                 return
@@ -36,13 +37,14 @@ struct UsageTimelineProvider: TimelineProvider {
                     date: Date(),
                     fiveHourUtilization: data.fiveHour?.utilization,
                     sevenDayUtilization: data.sevenDay?.utilization,
-                    isLoggedIn: true
+                    isLoggedIn: true,
+                    coachMessage: getWidgetCoachMessage(data: data)
                 )
                 let nextUpdate = Date().addingTimeInterval(30 * 60) // 30 minutes
                 let timeline = Timeline(entries: [entry], policy: .after(nextUpdate))
                 completion(timeline)
             } catch {
-                let entry = UsageEntry(date: Date(), fiveHourUtilization: nil, sevenDayUtilization: nil, isLoggedIn: true)
+                let entry = UsageEntry(date: Date(), fiveHourUtilization: nil, sevenDayUtilization: nil, isLoggedIn: true, coachMessage: nil)
                 let nextUpdate = Date().addingTimeInterval(15 * 60) // Retry in 15 minutes
                 let timeline = Timeline(entries: [entry], policy: .after(nextUpdate))
                 completion(timeline)
@@ -62,7 +64,8 @@ struct ClaudeMeterWidgetEntryView: View {
         } else {
             UsageDataView(
                 fiveHour: entry.fiveHourUtilization ?? 0,
-                sevenDay: entry.sevenDayUtilization ?? 0
+                sevenDay: entry.sevenDayUtilization ?? 0,
+                coachMessage: entry.coachMessage
             )
         }
     }
@@ -88,6 +91,7 @@ private struct NoDataView: View {
 private struct UsageDataView: View {
     let fiveHour: Double
     let sevenDay: Double
+    let coachMessage: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -100,6 +104,13 @@ private struct UsageDataView: View {
 
             WidgetUsageRow(label: "Weekly", utilization: sevenDay)
             WidgetProgressBar(utilization: sevenDay)
+
+            if let message = coachMessage {
+                Text(message)
+                    .font(.system(size: 10))
+                    .foregroundColor(Color(red: 0xA0/255, green: 0x9B/255, blue: 0xB0/255))
+                    .lineLimit(1)
+            }
         }
         .padding(12)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -150,6 +161,28 @@ private func statusColor(_ utilization: Double) -> Color {
     case 90...: return Color(red: 0xE8/255, green: 0x54/255, blue: 0x54/255)
     case 75...: return Color(red: 0xE8/255, green: 0x94/255, blue: 0x3A/255)
     default: return Color(red: 0x6B/255, green: 0x4F/255, blue: 0xBB/255)
+    }
+}
+
+// MARK: - Coach Message
+
+private func getWidgetCoachMessage(data: UsageData) -> String? {
+    let sessionUtil = data.fiveHour?.utilization ?? 0
+    let sessionRemaining = data.fiveHour?.remainingDuration
+    let weeklyUtil = data.sevenDay?.utilization ?? 0
+    let weeklyRemaining = data.sevenDay?.remainingDuration
+
+    switch true {
+    case sessionUtil >= 100:
+        return "\u{26A0}\u{FE0F} Session maxed — switch tasks!"
+    case sessionUtil > 80 && (sessionRemaining ?? .infinity) < 30 * 60:
+        return "\u{1F4A1} Reset imminent — take a break"
+    case weeklyUtil > 70 && (weeklyRemaining ?? 0) > 2 * 24 * 3600:
+        return "\u{1F4A1} \(Int(weeklyUtil))%+ weekly — focus on high-impact"
+    case weeklyUtil < 50 && (weeklyRemaining ?? 0) > 3 * 24 * 3600:
+        return "\u{1F680} Plenty of capacity!"
+    default:
+        return nil
     }
 }
 

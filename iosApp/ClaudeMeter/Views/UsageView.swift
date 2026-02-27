@@ -10,6 +10,7 @@ struct UsageView: View {
     let onLoginClick: () -> Void
     let onManualLogin: (String) -> Void
     let onSettingsClick: () -> Void
+    var onForecastClick: (() -> Void)? = nil
 
     @State private var showLogin = false
 
@@ -44,6 +45,12 @@ struct UsageView: View {
         .toolbar {
             if case .success = uiState {
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
+                    if let onForecastClick = onForecastClick {
+                        Button(action: onForecastClick) {
+                            Image(systemName: "chart.line.uptrend.xyaxis")
+                                .foregroundColor(.textSecondary)
+                        }
+                    }
                     Button(action: onSettingsClick) {
                         Image(systemName: "gearshape")
                             .foregroundColor(.textSecondary)
