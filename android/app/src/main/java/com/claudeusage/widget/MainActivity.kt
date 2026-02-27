@@ -101,7 +101,6 @@ class MainActivity : ComponentActivity() {
                 val uiState by viewModel.uiState.collectAsState()
                 val isRefreshing by viewModel.isRefreshing.collectAsState()
                 val lastUpdated by viewModel.lastUpdated.collectAsState()
-                val coachNotification by viewModel.coachNotification.collectAsState()
                 val usageHistory by viewModel.usageHistory.collectAsState()
 
                 when (currentScreen) {
@@ -113,7 +112,6 @@ class MainActivity : ComponentActivity() {
                             visibleMetrics = metricVisibility
                                 .filter { it.value }
                                 .keys,
-                            coachNotification = if (coachEnabled) coachNotification else null,
                             onRefresh = viewModel::refresh,
                             onLogout = {
                                 viewModel.logout()

@@ -31,11 +31,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.claudeusage.widget.data.model.CoachNotification
 import com.claudeusage.widget.data.model.ExtraUsageInfo
 import com.claudeusage.widget.data.model.UsageData
 import com.claudeusage.widget.ui.components.BannerAd
-import com.claudeusage.widget.ui.components.CoachBanner
 import com.claudeusage.widget.ui.components.UsageProgressBar
 import com.claudeusage.widget.ui.theme.*
 
@@ -46,7 +44,6 @@ fun UsageScreen(
     isRefreshing: Boolean,
     lastUpdated: String?,
     visibleMetrics: Set<String>,
-    coachNotification: CoachNotification? = null,
     onRefresh: () -> Unit,
     onLogout: () -> Unit,
     onLoginClick: () -> Unit,
@@ -126,8 +123,7 @@ fun UsageScreen(
                 is UiState.Success -> UsageContent(
                     data = uiState.data,
                     lastUpdated = lastUpdated,
-                    visibleMetrics = visibleMetrics,
-                    coachNotification = coachNotification
+                    visibleMetrics = visibleMetrics
                 )
                 is UiState.Error -> ErrorContent(
                     message = uiState.message,
@@ -337,8 +333,7 @@ private fun LoginContent(
 private fun UsageContent(
     data: UsageData,
     lastUpdated: String?,
-    visibleMetrics: Set<String>,
-    coachNotification: CoachNotification? = null
+    visibleMetrics: Set<String>
 ) {
     val scrollState = rememberScrollState()
 
@@ -365,12 +360,6 @@ private fun UsageContent(
             metric = data.sevenDay ?: defaultMetric,
             totalWindowHours = 168.0
         )
-
-        // Coach banner
-        if (coachNotification != null) {
-            Spacer(modifier = Modifier.height(12.dp))
-            CoachBanner(notification = coachNotification)
-        }
 
         // Extra metrics (filtered by settings)
         val filteredMetrics = data.extraMetrics.filter { (label, _) ->
