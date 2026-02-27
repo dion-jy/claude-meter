@@ -29,7 +29,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.time.Duration
-import java.time.Instant
 
 sealed class UiState {
     data object Loading : UiState()
@@ -62,9 +61,8 @@ class UsageViewModel(application: Application) : AndroidViewModel(application) {
 
     private var autoRefreshJob: Job? = null
     private var prevSessionUtil: Double? = null
-    private var prevWeeklyResetsAt: Long? = null // truncated to hours for stable comparison
+    private var prevWeeklyUtil: Double? = null
     private var lastCoachEvalTime: Long = 0L
-    private var weeklyResetNotified: Boolean = false
 
     init {
         createCoachNotificationChannel()
@@ -153,9 +151,7 @@ class UsageViewModel(application: Application) : AndroidViewModel(application) {
                 recordUsageHistory(data)
                 // Update previous values for next comparison
                 prevSessionUtil = data.fiveHour?.utilization
-                prevWeeklyResetsAt = data.sevenDay?.resetsAt
-                    ?.truncatedTo(java.time.temporal.ChronoUnit.HOURS)
-                    ?.toEpochMilli()
+                prevWeeklyUtil = data.sevenDay?.utilization
             },
             onFailure = { error ->
                 val isAuth = error is AuthException
@@ -270,29 +266,17 @@ class UsageViewModel(application: Application) : AndroidViewModel(application) {
             )
         }
 
-        // Weekly reset: resetsAt changed significantly (new reset period started)
-        val currentWeeklyResetHour = data.sevenDay?.resetsAt
-            ?.truncatedTo(java.time.temporal.ChronoUnit.HOURS)
-            ?.toEpochMilli()
-        val prevWeekly = prevWeeklyResetsAt
-        if (prevWeekly != null && currentWeeklyResetHour != null
-            && currentWeeklyResetHour != prevWeekly && !weeklyResetNotified
-        ) {
-            val currentWeeklyUtil = data.sevenDay?.utilization ?: 0.0
-            if (currentWeeklyUtil < 5.0) {
-                sendCoachPushNotification(
-                    "Weekly reset!",
-                    "Fresh weekly capacity — let's make this week count",
-                    COACH_WEEKLY_RESET_ID
-                )
-                historyStore.clearHistory()
-                _usageHistory.value = emptyList()
-                weeklyResetNotified = true
-            }
-        }
-        // Clear flag once the reset period stabilizes
-        if (currentWeeklyResetHour != null && currentWeeklyResetHour == prevWeekly) {
-            weeklyResetNotified = false
+        // Weekly reset: previous utilization was significant, now dropped to near zero
+        val currentWeeklyUtil = data.sevenDay?.utilization ?: 0.0
+        val prevWeekly = prevWeeklyUtil
+        if (prevWeekly != null && prevWeekly > 30.0 && currentWeeklyUtil < 5.0) {
+            sendCoachPushNotification(
+                "Weekly reset!",
+                "Fresh weekly capacity — let's make this week count",
+                COACH_WEEKLY_RESET_ID
+            )
+            historyStore.clearHistory()
+            _usageHistory.value = emptyList()
         }
     }
 
