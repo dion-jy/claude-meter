@@ -63,6 +63,7 @@ class UsageViewModel(application: Application) : AndroidViewModel(application) {
     private var autoRefreshJob: Job? = null
     private var prevSessionUtil: Double? = null
     private var prevWeeklyResetsAt: Instant? = null
+    private var lastCoachEvalTime: Long = 0L
 
     init {
         createCoachNotificationChannel()
@@ -140,7 +141,11 @@ class UsageViewModel(application: Application) : AndroidViewModel(application) {
                 // Coach features
                 if (appPreferences.coachEnabled) {
                     detectResets(data)
-                    evaluateCoachNotification(data)
+                    val now = System.currentTimeMillis()
+                    if (now - lastCoachEvalTime >= COACH_EVAL_INTERVAL_MS) {
+                        evaluateCoachNotification(data)
+                        lastCoachEvalTime = now
+                    }
                 } else {
                     _coachNotification.value = null
                 }
@@ -332,6 +337,7 @@ class UsageViewModel(application: Application) : AndroidViewModel(application) {
 
     companion object {
         const val UPDATE_INTERVAL_MS = 5 * 60 * 1000L // 5 minutes
+        private const val COACH_EVAL_INTERVAL_MS = 60 * 60 * 1000L // 1 hour
         private const val COACH_CHANNEL_ID = "coach_channel"
         private const val COACH_SESSION_RESET_ID = 2001
         private const val COACH_WEEKLY_RESET_ID = 2002
