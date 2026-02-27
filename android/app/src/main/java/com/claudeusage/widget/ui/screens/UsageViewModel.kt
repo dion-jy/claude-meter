@@ -62,8 +62,9 @@ class UsageViewModel(application: Application) : AndroidViewModel(application) {
 
     private var autoRefreshJob: Job? = null
     private var prevSessionUtil: Double? = null
-    private var prevWeeklyResetsAt: Instant? = null
+    private var prevWeeklyResetsAt: Long? = null // truncated to hours for stable comparison
     private var lastCoachEvalTime: Long = 0L
+    private var weeklyResetNotified: Boolean = false
 
     init {
         createCoachNotificationChannel()
@@ -153,6 +154,8 @@ class UsageViewModel(application: Application) : AndroidViewModel(application) {
                 // Update previous values for next comparison
                 prevSessionUtil = data.fiveHour?.utilization
                 prevWeeklyResetsAt = data.sevenDay?.resetsAt
+                    ?.truncatedTo(java.time.temporal.ChronoUnit.HOURS)
+                    ?.toEpochMilli()
             },
             onFailure = { error ->
                 val isAuth = error is AuthException
@@ -267,10 +270,14 @@ class UsageViewModel(application: Application) : AndroidViewModel(application) {
             )
         }
 
-        // Weekly reset: resetsAt changed (new reset period started)
-        val currentWeeklyReset = data.sevenDay?.resetsAt
+        // Weekly reset: resetsAt changed significantly (new reset period started)
+        val currentWeeklyResetHour = data.sevenDay?.resetsAt
+            ?.truncatedTo(java.time.temporal.ChronoUnit.HOURS)
+            ?.toEpochMilli()
         val prevWeekly = prevWeeklyResetsAt
-        if (prevWeekly != null && currentWeeklyReset != null && currentWeeklyReset != prevWeekly) {
+        if (prevWeekly != null && currentWeeklyResetHour != null
+            && currentWeeklyResetHour != prevWeekly && !weeklyResetNotified
+        ) {
             val currentWeeklyUtil = data.sevenDay?.utilization ?: 0.0
             if (currentWeeklyUtil < 5.0) {
                 sendCoachPushNotification(
@@ -280,7 +287,12 @@ class UsageViewModel(application: Application) : AndroidViewModel(application) {
                 )
                 historyStore.clearHistory()
                 _usageHistory.value = emptyList()
+                weeklyResetNotified = true
             }
+        }
+        // Clear flag once the reset period stabilizes
+        if (currentWeeklyResetHour != null && currentWeeklyResetHour == prevWeekly) {
+            weeklyResetNotified = false
         }
     }
 
