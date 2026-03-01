@@ -1,5 +1,6 @@
 package com.claudeusage.widget.service
 
+import android.app.ForegroundServiceStartNotAllowedException
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -7,7 +8,9 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.IBinder
+import android.util.Log
 import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import com.claudeusage.widget.MainActivity
@@ -29,7 +32,7 @@ class UsageNotificationService : Service() {
         if (intent?.action == ACTION_FORCE_UPDATE) {
             scope.launch { updateNotification() }
         }
-        return START_STICKY
+        return START_NOT_STICKY
     }
 
     override fun onCreate() {
@@ -150,6 +153,7 @@ class UsageNotificationService : Service() {
     }
 
     companion object {
+        private const val TAG = "UsageNotificationService"
         const val CHANNEL_ID = "claude_usage_channel"
         const val NOTIFICATION_ID = 1001
         const val UPDATE_INTERVAL_MS = 3 * 60 * 1000L // 3 minutes
@@ -157,7 +161,15 @@ class UsageNotificationService : Service() {
 
         fun start(context: Context) {
             val intent = Intent(context, UsageNotificationService::class.java)
-            context.startForegroundService(intent)
+            try {
+                context.startForegroundService(intent)
+            } catch (e: Exception) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && e is ForegroundServiceStartNotAllowedException) {
+                    Log.w(TAG, "Cannot start foreground service from background", e)
+                } else {
+                    throw e
+                }
+            }
         }
 
         fun stop(context: Context) {
@@ -169,7 +181,15 @@ class UsageNotificationService : Service() {
             val intent = Intent(context, UsageNotificationService::class.java).apply {
                 action = ACTION_FORCE_UPDATE
             }
-            context.startForegroundService(intent)
+            try {
+                context.startForegroundService(intent)
+            } catch (e: Exception) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && e is ForegroundServiceStartNotAllowedException) {
+                    Log.w(TAG, "Cannot update foreground service from background", e)
+                } else {
+                    throw e
+                }
+            }
         }
     }
 }
