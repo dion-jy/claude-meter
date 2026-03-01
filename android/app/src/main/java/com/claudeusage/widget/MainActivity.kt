@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
@@ -126,6 +127,7 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     Screen.Settings -> {
+                        BackHandler { currentScreen = Screen.Usage }
                         // Always show all toggles
                         val availableToggles = listOf(
                             MetricToggle("sonnet", "Sonnet (7d)", metricVisibility["sonnet"] ?: true),
@@ -158,6 +160,7 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     Screen.Forecast -> {
+                        BackHandler { currentScreen = Screen.Usage }
                         val usageData = (uiState as? UiState.Success)?.data
                         ForecastScreen(
                             usageData = usageData,
