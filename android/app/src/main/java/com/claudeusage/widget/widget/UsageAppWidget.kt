@@ -22,7 +22,8 @@ import com.claudeusage.shared.repository.UsageRepository
 import com.claudeusage.widget.data.local.CredentialManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.time.Duration
+import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.minutes
 
 class UsageAppWidget : GlanceAppWidget() {
 
@@ -199,11 +200,11 @@ private fun getCoachMessage(data: UsageData): String? {
     return when {
         sessionUtil >= 100.0 -> "\u26A0 Session maxed — switch tasks!"
         sessionUtil > 80.0 && sessionRemaining != null
-            && sessionRemaining < Duration.ofMinutes(30) -> "\uD83D\uDCA1 Reset imminent — take a break"
+            && sessionRemaining < 30.minutes -> "\uD83D\uDCA1 Reset imminent — take a break"
         weeklyUtil > 70.0 && weeklyRemaining != null
-            && weeklyRemaining > Duration.ofDays(2) -> "\uD83D\uDCA1 70%+ weekly — focus on high-impact"
+            && weeklyRemaining > 2.days -> "\uD83D\uDCA1 70%+ weekly — focus on high-impact"
         weeklyUtil < 50.0 && weeklyRemaining != null
-            && weeklyRemaining > Duration.ofDays(3) -> "\uD83D\uDE80 Plenty of capacity!"
+            && weeklyRemaining > 3.days -> "\uD83D\uDE80 Plenty of capacity!"
         else -> null
     }
 }

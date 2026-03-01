@@ -120,12 +120,16 @@ jobs:
           APPETIZE_API_TOKEN: ${{ secrets.APPETIZE_API_TOKEN }}
           APPETIZE_PUBLIC_KEY: ${{ secrets.APPETIZE_PUBLIC_KEY }}
         run: |
+          # Base64-encode the zip for direct upload via JSON API
+          ENCODED=$(base64 -i build/ClaudeMeter-simulator.zip)
+          DATA_URL="data:application/zip;base64,${ENCODED}"
+
           if [ -z "$APPETIZE_PUBLIC_KEY" ]; then
             echo "### First upload - registering new app on Appetize.io"
             RESPONSE=$(curl -s "https://api.appetize.io/v2/apps" \
               -H "Authorization: Bearer $APPETIZE_API_TOKEN" \
-              -F "file=@build/ClaudeMeter-simulator.zip" \
-              -F "platform=ios")
+              -H "Content-Type: application/json" \
+              -d "{\"url\":\"${DATA_URL}\",\"platform\":\"ios\"}")
             PUBLIC_KEY=$(echo "$RESPONSE" | jq -r '.publicKey // empty')
             if [ -n "$PUBLIC_KEY" ]; then
               echo "### Appetize app registered" >> $GITHUB_STEP_SUMMARY
@@ -140,11 +144,12 @@ jobs:
             fi
           else
             echo "### Updating existing app on Appetize.io"
-            curl -s "https://api.appetize.io/v2/apps/$APPETIZE_PUBLIC_KEY" \
+            RESPONSE=$(curl -s "https://api.appetize.io/v2/apps/$APPETIZE_PUBLIC_KEY" \
               -X PUT \
               -H "Authorization: Bearer $APPETIZE_API_TOKEN" \
-              -F "file=@build/ClaudeMeter-simulator.zip" \
-              -F "platform=ios"
+              -H "Content-Type: application/json" \
+              -d "{\"url\":\"${DATA_URL}\",\"platform\":\"ios\"}")
+            echo "$RESPONSE" | jq .
             echo "### Appetize app updated" >> $GITHUB_STEP_SUMMARY
             echo "- **URL**: https://appetize.io/app/$APPETIZE_PUBLIC_KEY" >> $GITHUB_STEP_SUMMARY
           fi
