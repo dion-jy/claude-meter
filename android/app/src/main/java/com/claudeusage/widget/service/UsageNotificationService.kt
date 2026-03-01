@@ -15,10 +15,10 @@ import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import com.claudeusage.widget.MainActivity
 import com.claudeusage.widget.R
+import com.claudeusage.shared.model.UsageData
+import com.claudeusage.shared.model.UsageMetric
+import com.claudeusage.shared.repository.UsageRepository
 import com.claudeusage.widget.data.local.CredentialManager
-import com.claudeusage.widget.data.model.UsageData
-import com.claudeusage.widget.data.model.UsageMetric
-import com.claudeusage.widget.data.repository.UsageRepository
 import kotlinx.coroutines.*
 
 class UsageNotificationService : Service() {
@@ -79,18 +79,20 @@ class UsageNotificationService : Service() {
     private fun buildUsageNotification(data: UsageData): Notification {
         val remoteViews = RemoteViews(packageName, R.layout.notification_usage)
 
-        if (data.fiveHour != null) {
-            val progress = data.fiveHour.utilization.toInt().coerceIn(0, 100)
+        val fiveHour = data.fiveHour
+        if (fiveHour != null) {
+            val progress = fiveHour.utilization.toInt().coerceIn(0, 100)
             remoteViews.setProgressBar(R.id.progress_5h, 100, progress, false)
-            remoteViews.setTextViewText(R.id.percent_5h, String.format("%.1f%%", data.fiveHour.utilization))
-            remoteViews.setTextViewText(R.id.time_5h, formatRemaining(data.fiveHour))
+            remoteViews.setTextViewText(R.id.percent_5h, String.format("%.1f%%", fiveHour.utilization))
+            remoteViews.setTextViewText(R.id.time_5h, formatRemaining(fiveHour))
         }
 
-        if (data.sevenDay != null) {
-            val progress = data.sevenDay.utilization.toInt().coerceIn(0, 100)
+        val sevenDay = data.sevenDay
+        if (sevenDay != null) {
+            val progress = sevenDay.utilization.toInt().coerceIn(0, 100)
             remoteViews.setProgressBar(R.id.progress_7d, 100, progress, false)
-            remoteViews.setTextViewText(R.id.percent_7d, String.format("%.1f%%", data.sevenDay.utilization))
-            remoteViews.setTextViewText(R.id.time_7d, formatRemaining(data.sevenDay))
+            remoteViews.setTextViewText(R.id.percent_7d, String.format("%.1f%%", sevenDay.utilization))
+            remoteViews.setTextViewText(R.id.time_7d, formatRemaining(sevenDay))
         }
 
         val intent = Intent(this, MainActivity::class.java).apply {
@@ -115,10 +117,10 @@ class UsageNotificationService : Service() {
 
     private fun formatRemaining(metric: UsageMetric): String {
         val remaining = metric.remainingDuration ?: return ""
-        if (remaining.seconds <= 0) return ""
-        val d = remaining.seconds / 86400
-        val h = (remaining.seconds % 86400) / 3600
-        val m = (remaining.seconds % 3600) / 60
+        if (remaining.inWholeSeconds <= 0) return ""
+        val d = remaining.inWholeSeconds / 86400
+        val h = (remaining.inWholeSeconds % 86400) / 3600
+        val m = (remaining.inWholeSeconds % 3600) / 60
         return when {
             d > 0 -> "${d}d ${h}h"
             h > 0 -> "${h}h ${m}m"
