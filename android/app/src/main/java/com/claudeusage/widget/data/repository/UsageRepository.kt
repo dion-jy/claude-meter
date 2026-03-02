@@ -123,22 +123,22 @@ class UsageRepository {
 
             when {
                 response.code == 401 || response.code == 403 -> {
-                    throw AuthException("Session expired. Please log in again.")
+                    throw AuthException("[HTTP ${response.code}] Session expired.\nPlease log in again.")
                 }
                 response.code == 429 -> {
                     lastException = RateLimitException(
-                        "Too many requests. Please wait a moment and try again."
+                        "[HTTP 429] Too many requests.\nPlease wait a moment and try again."
                     )
                     continue // retry with backoff
                 }
                 !response.isSuccessful -> {
-                    throw IOException("HTTP ${response.code}: ${response.message}")
+                    throw IOException("[HTTP ${response.code}] ${response.message.ifEmpty { "Request failed." }}")
                 }
                 body.contains("Just a moment") || body.contains("Enable JavaScript") -> {
-                    throw CloudflareException("Cloudflare challenge detected. Please try again.")
+                    throw CloudflareException("[Cloudflare] Challenge detected.\nPlease try again.")
                 }
                 body.trimStart().startsWith("<") -> {
-                    throw IOException("Unexpected HTML response from server.")
+                    throw IOException("[HTTP ${response.code}] Unexpected HTML response from server.")
                 }
             }
 
@@ -164,10 +164,10 @@ class UsageRepository {
 
                 when {
                     response.code == 401 || response.code == 403 -> {
-                        Result.failure(AuthException("Invalid session key."))
+                        Result.failure(AuthException("[HTTP ${response.code}] Invalid session key."))
                     }
                     !response.isSuccessful -> {
-                        Result.failure(IOException("HTTP ${response.code}: ${response.message}"))
+                        Result.failure(IOException("[HTTP ${response.code}] ${response.message.ifEmpty { "Request failed." }}"))
                     }
                     else -> {
                         val jsonArray = JSONArray(body)
