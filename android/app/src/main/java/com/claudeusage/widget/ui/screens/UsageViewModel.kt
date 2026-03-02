@@ -17,6 +17,7 @@ import com.claudeusage.widget.data.local.UsageHistoryStore
 import com.claudeusage.widget.data.model.Credentials
 import com.claudeusage.widget.data.model.UsageData
 import com.claudeusage.widget.data.repository.AuthException
+import com.claudeusage.widget.data.repository.RateLimitException
 import com.claudeusage.widget.data.repository.UsageRepository
 import com.claudeusage.widget.service.UsageNotificationService
 import kotlinx.coroutines.Job
@@ -152,6 +153,7 @@ class UsageViewModel(application: Application) : AndroidViewModel(application) {
             },
             onFailure = { error ->
                 val isAuth = error is AuthException
+                val isRateLimit = error is RateLimitException
                 if (isAuth) {
                     credentialManager.clearCredentials()
                 }
@@ -159,7 +161,8 @@ class UsageViewModel(application: Application) : AndroidViewModel(application) {
                 val currentState = _uiState.value
                 if (currentState is UiState.Success) {
                     // Keep existing data, just update timestamp note
-                    _lastUpdated.value = "Update failed - ${formatLastUpdated()}"
+                    val reason = if (isRateLimit) "Rate limited" else "Update failed"
+                    _lastUpdated.value = "$reason - ${formatLastUpdated()}"
                 } else {
                     _uiState.value = UiState.Error(
                         message = error.message ?: "Failed to fetch usage data.",
