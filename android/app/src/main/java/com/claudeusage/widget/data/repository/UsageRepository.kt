@@ -94,39 +94,58 @@ class UsageRepository {
                 Result.failure(e)
             } catch (e: CloudflareException) {
                 Result.failure(e)
+            } catch (e: RateLimitException) {
+                Result.failure(e)
             } catch (e: Exception) {
                 Result.failure(e)
             }
         }
 
     private fun fetchJson(url: String, sessionKey: String): JSONObject {
-        val request = Request.Builder()
-            .url(url)
-            .addHeader("Cookie", "sessionKey=$sessionKey")
-            .addHeader("User-Agent", USER_AGENT)
-            .addHeader("Accept", "application/json")
-            .addHeader("Referer", BASE_URL)
-            .build()
+        var lastException: Exception? = null
 
-        val response = client.newCall(request).execute()
-        val body = response.body?.string() ?: ""
+        for (attempt in 0..MAX_RETRIES) {
+            if (attempt > 0) {
+                val backoffMs = INITIAL_BACKOFF_MS * (1L shl (attempt - 1))
+                Thread.sleep(backoffMs)
+            }
 
-        when {
-            response.code == 401 || response.code == 403 -> {
-                throw AuthException("Session expired. Please log in again.")
+            val request = Request.Builder()
+                .url(url)
+                .addHeader("Cookie", "sessionKey=$sessionKey")
+                .addHeader("User-Agent", USER_AGENT)
+                .addHeader("Accept", "application/json")
+                .addHeader("Referer", BASE_URL)
+                .build()
+
+            val response = client.newCall(request).execute()
+            val body = response.body?.string() ?: ""
+
+            when {
+                response.code == 401 || response.code == 403 -> {
+                    throw AuthException("[HTTP ${response.code}] Session expired.\nPlease log in again.")
+                }
+                response.code == 429 -> {
+                    lastException = RateLimitException(
+                        "[HTTP 429] Too many requests.\nPlease wait a moment and try again."
+                    )
+                    continue // retry with backoff
+                }
+                !response.isSuccessful -> {
+                    throw IOException("[HTTP ${response.code}] ${response.message.ifEmpty { "Request failed." }}")
+                }
+                body.contains("Just a moment") || body.contains("Enable JavaScript") -> {
+                    throw CloudflareException("[Cloudflare] Challenge detected.\nPlease try again.")
+                }
+                body.trimStart().startsWith("<") -> {
+                    throw IOException("[HTTP ${response.code}] Unexpected HTML response from server.")
+                }
             }
-            !response.isSuccessful -> {
-                throw IOException("HTTP ${response.code}: ${response.message}")
-            }
-            body.contains("Just a moment") || body.contains("Enable JavaScript") -> {
-                throw CloudflareException("Cloudflare challenge detected. Please try again.")
-            }
-            body.trimStart().startsWith("<") -> {
-                throw IOException("Unexpected HTML response from server.")
-            }
+
+            return JSONObject(body)
         }
 
-        return JSONObject(body)
+        throw lastException ?: IOException("Request failed after retries.")
     }
 
     suspend fun fetchOrganizationId(sessionKey: String): Result<String> =
@@ -145,10 +164,10 @@ class UsageRepository {
 
                 when {
                     response.code == 401 || response.code == 403 -> {
-                        Result.failure(AuthException("Invalid session key."))
+                        Result.failure(AuthException("[HTTP ${response.code}] Invalid session key."))
                     }
                     !response.isSuccessful -> {
-                        Result.failure(IOException("HTTP ${response.code}: ${response.message}"))
+                        Result.failure(IOException("[HTTP ${response.code}] ${response.message.ifEmpty { "Request failed." }}"))
                     }
                     else -> {
                         val jsonArray = JSONArray(body)
@@ -178,6 +197,8 @@ class UsageRepository {
         const val BASE_URL = "https://claude.ai"
         const val USER_AGENT =
             "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Mobile Safari/537.36"
+        private const val MAX_RETRIES = 3
+        private const val INITIAL_BACKOFF_MS = 2000L
     }
 }
 
@@ -187,3 +208,4 @@ private fun JSONObject.optIntOrNull(key: String): Int? {
 
 class AuthException(message: String) : Exception(message)
 class CloudflareException(message: String) : Exception(message)
+class RateLimitException(message: String) : Exception(message)
