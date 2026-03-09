@@ -7,6 +7,7 @@ import com.claudeusage.widget.data.model.UsageMetric
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -18,8 +19,8 @@ import java.util.concurrent.TimeUnit
 class UsageRepository {
 
     private val client = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(15, TimeUnit.SECONDS)
         .followRedirects(true)
         .build()
 
@@ -101,13 +102,13 @@ class UsageRepository {
             }
         }
 
-    private fun fetchJson(url: String, sessionKey: String): JSONObject {
+    private suspend fun fetchJson(url: String, sessionKey: String): JSONObject {
         var lastException: Exception? = null
 
         for (attempt in 0..MAX_RETRIES) {
             if (attempt > 0) {
                 val backoffMs = INITIAL_BACKOFF_MS * (1L shl (attempt - 1))
-                Thread.sleep(backoffMs)
+                delay(backoffMs)
             }
 
             val request = Request.Builder()

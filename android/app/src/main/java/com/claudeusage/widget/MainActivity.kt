@@ -177,10 +177,16 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        viewModel.onAppForeground()
         val state = viewModel.uiState.value
         if (state is UiState.Success) {
             viewModel.refresh()
         }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        viewModel.onAppBackground()
     }
 
     private fun launchLogin() {

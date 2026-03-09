@@ -27,6 +27,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.time.Duration
 
 sealed class UiState {
@@ -56,6 +58,8 @@ class UsageViewModel(application: Application) : AndroidViewModel(application) {
     val usageHistory: StateFlow<List<UsageHistoryEntry>> = _usageHistory.asStateFlow()
 
     private var autoRefreshJob: Job? = null
+    private val fetchMutex = Mutex()
+    private var isAppInForeground = false
     private var prevSessionUtil: Double? = null
     private var prevWeeklyUtil: Double? = null
     private var prevSonnetUtil: Double? = null
@@ -103,8 +107,23 @@ class UsageViewModel(application: Application) : AndroidViewModel(application) {
         onLoginComplete(sessionKey)
     }
 
+    fun onAppForeground() {
+        isAppInForeground = true
+        val state = _uiState.value
+        if (state is UiState.Success) {
+            startAutoRefresh()
+        }
+    }
+
+    fun onAppBackground() {
+        isAppInForeground = false
+        autoRefreshJob?.cancel()
+        autoRefreshJob = null
+    }
+
     fun refresh() {
         viewModelScope.launch {
+            if (fetchMutex.isLocked) return@launch
             _isRefreshing.value = true
             fetchUsageData()
             _isRefreshing.value = false
@@ -119,11 +138,11 @@ class UsageViewModel(application: Application) : AndroidViewModel(application) {
         UsageNotificationService.stop(getApplication())
     }
 
-    private suspend fun fetchUsageData() {
+    private suspend fun fetchUsageData() = fetchMutex.withLock {
         val credentials = credentialManager.getCredentials()
         if (credentials == null) {
             _uiState.value = UiState.LoginRequired
-            return
+            return@withLock
         }
 
         val result = repository.fetchUsageData(credentials)
@@ -174,10 +193,12 @@ class UsageViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun startAutoRefresh() {
+        if (!isAppInForeground) return
         autoRefreshJob?.cancel()
         autoRefreshJob = viewModelScope.launch {
             while (isActive) {
                 delay(UPDATE_INTERVAL_MS)
+                if (!isAppInForeground) break
                 fetchUsageData()
             }
         }

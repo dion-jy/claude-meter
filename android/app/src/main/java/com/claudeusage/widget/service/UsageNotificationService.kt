@@ -58,7 +58,11 @@ class UsageNotificationService : Service() {
     private fun startPolling() {
         scope.launch {
             while (isActive) {
-                updateNotification()
+                try {
+                    updateNotification()
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to update notification", e)
+                }
                 delay(UPDATE_INTERVAL_MS)
             }
         }
