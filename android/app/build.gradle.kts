@@ -118,6 +118,12 @@ dependencies {
     // Google AdMob
     implementation("com.google.android.gms:play-services-ads:23.1.0")
 
+    // AdMob Mediation - Facebook Audience Network adapter
+    implementation("com.google.ads.mediation:facebook:6.17.0.0")
+
+    // AdMob Mediation - Unity Ads adapter
+    implementation("com.google.ads.mediation:unity:4.9.2.0")
+
     // Debug
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")

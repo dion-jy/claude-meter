@@ -2,4 +2,6 @@
 <resources>
     <string name="app_name">ClaudeMeter</string>
     <string name="widget_description">Don\'t Waste a Single Token. Monitor your Claude.ai usage in real-time.</string>
+    <!-- TODO: Replace with your actual Facebook App ID from developers.facebook.com -->
+    <string name="facebook_app_id">YOUR_FACEBOOK_APP_ID</string>
 </resources>
