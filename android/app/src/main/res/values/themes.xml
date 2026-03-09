@@ -3,8 +3,6 @@
     <style name="Theme.ClaudeUsage" parent="android:Theme.Material.NoActionBar">
         <item name="android:colorPrimary">@color/claude_purple</item>
         <item name="android:colorPrimaryDark">@color/claude_purple_dark</item>
-        <item name="android:statusBarColor">@color/dark_background</item>
-        <item name="android:navigationBarColor">@color/dark_background</item>
         <item name="android:windowBackground">@color/dark_background</item>
     </style>
 
