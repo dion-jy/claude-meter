@@ -102,11 +102,13 @@ class CodexLoginActivity : ComponentActivity() {
     private fun extractSessionCookies(): String? {
         return try {
             val cookies = CookieManager.getInstance().getCookie("https://chatgpt.com") ?: return null
-            // Check for session token that indicates successful login
-            val hasSession = cookies.contains("__Secure-next-auth.session-token")
-                    || cookies.contains("_puid")
-                    || cookies.contains("__cf_bm")
-            if (hasSession) cookies.trim() else null
+            // Only __Secure-next-auth.session-token indicates a real login
+            // __cf_bm and _puid are set before login and must NOT be used
+            if (cookies.contains("__Secure-next-auth.session-token")) {
+                cookies.trim()
+            } else {
+                null
+            }
         } catch (_: Exception) {
             null
         }
@@ -240,18 +242,12 @@ private fun CodexLoginWebViewScreen(
                                 override fun onPageFinished(view: WebView?, url: String?) {
                                     isLoading = false
 
-                                    // Show hint on login page
-                                    if (url?.contains("/auth/login") == true) {
-                                        showHint = true
-                                    } else {
-                                        showHint = false
-                                    }
+                                    val isAuthPage = url?.contains("/auth") == true
+                                    showHint = isAuthPage
 
-                                    // Check for session cookies after page load
-                                    checkForSessionCookies(onSessionCaptured)
-
-                                    // Start polling on chatgpt.com pages
-                                    if (url?.contains("chatgpt.com") == true) {
+                                    // Only check cookies on non-auth pages (post-login)
+                                    if (!isAuthPage && url?.contains("chatgpt.com") == true) {
+                                        checkForSessionCookies(onSessionCaptured)
                                         onStartPolling(onSessionCaptured)
                                     }
                                 }
@@ -311,10 +307,7 @@ private fun CodexLoginWebViewScreen(
 private fun checkForSessionCookies(onSessionCaptured: (String) -> Unit) {
     try {
         val cookies = CookieManager.getInstance().getCookie("https://chatgpt.com") ?: return
-
-        val hasSession = cookies.contains("__Secure-next-auth.session-token")
-                || cookies.contains("_puid")
-        if (hasSession) {
+        if (cookies.contains("__Secure-next-auth.session-token")) {
             onSessionCaptured(cookies.trim())
         }
     } catch (_: Exception) {}
