@@ -11,8 +11,8 @@ android {
         applicationId = "com.claudeusage.widget"
         minSdk = 26
         targetSdk = 35
-        versionCode = 5
-        versionName = "1.1.1"
+        versionCode = 6
+        versionName = "1.2.0"
 
         vectorDrawables {
             useSupportLibrary = true

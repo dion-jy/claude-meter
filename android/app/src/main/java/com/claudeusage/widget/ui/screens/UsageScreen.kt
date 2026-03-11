@@ -51,6 +51,35 @@ fun UsageScreen(
     onSettingsClick: () -> Unit,
     onForecastClick: () -> Unit = {}
 ) {
+    var showLogoutDialog by remember { mutableStateOf(false) }
+
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            title = { Text("로그아웃", fontWeight = FontWeight.Bold) },
+            text = {
+                Column {
+                    Text("정말 로그아웃 하시겠습니까?")
+                    Spacer(modifier = Modifier.height(16.dp))
+                    BannerAd(modifier = Modifier.fillMaxWidth())
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showLogoutDialog = false
+                    onLogout()
+                }) {
+                    Text("로그아웃", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutDialog = false }) {
+                    Text("취소")
+                }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -92,7 +121,7 @@ fun UsageScreen(
                                 )
                             }
                         }
-                        IconButton(onClick = onLogout) {
+                        IconButton(onClick = { showLogoutDialog = true }) {
                             Icon(
                                 Icons.Default.Logout,
                                 contentDescription = "Logout",
