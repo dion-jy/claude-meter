@@ -58,14 +58,7 @@ fun UsageScreen(
             onDismissRequest = { showLogoutDialog = false },
             title = { Text("로그아웃", fontWeight = FontWeight.Bold) },
             text = {
-                Column {
-                    Text("정말 로그아웃 하시겠습니까?")
-                    Spacer(modifier = Modifier.height(16.dp))
-                    BannerAd(
-                        modifier = Modifier.fillMaxWidth(),
-                        adSize = com.google.android.gms.ads.AdSize.MEDIUM_RECTANGLE
-                    )
-                }
+                Text("정말 로그아웃 하시겠습니까?")
             },
             confirmButton = {
                 TextButton(onClick = {
