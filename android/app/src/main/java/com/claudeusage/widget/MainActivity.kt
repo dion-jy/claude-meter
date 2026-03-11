@@ -55,6 +55,17 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private val codexLoginLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == RESULT_OK) {
+            val cookies = result.data?.getStringExtra(CodexLoginActivity.EXTRA_COOKIES)
+            if (cookies != null) {
+                viewModel.onCodexLoginComplete(cookies)
+            }
+        }
+    }
+
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
@@ -110,6 +121,7 @@ class MainActivity : ComponentActivity() {
                 val isRefreshing by viewModel.isRefreshing.collectAsState()
                 val lastUpdated by viewModel.lastUpdated.collectAsState()
                 val usageHistory by viewModel.usageHistory.collectAsState()
+                val codexState by viewModel.codexState.collectAsState()
 
                 when (currentScreen) {
                     Screen.Usage -> {
@@ -120,6 +132,7 @@ class MainActivity : ComponentActivity() {
                             visibleMetrics = metricVisibility
                                 .filter { it.value }
                                 .keys,
+                            codexState = codexState,
                             onRefresh = viewModel::refresh,
                             onLogout = {
                                 interstitialAdManager.showThen(this@MainActivity) {
@@ -132,7 +145,9 @@ class MainActivity : ComponentActivity() {
                                 viewModel.onManualLogin(sessionKey)
                             },
                             onSettingsClick = { currentScreen = Screen.Settings },
-                            onForecastClick = { currentScreen = Screen.Forecast }
+                            onForecastClick = { currentScreen = Screen.Forecast },
+                            onCodexLoginClick = { launchCodexLogin() },
+                            onCodexLogout = { viewModel.logoutCodex() }
                         )
                     }
                     Screen.Settings -> {
@@ -199,6 +214,11 @@ class MainActivity : ComponentActivity() {
     private fun launchLogin() {
         val intent = Intent(this, LoginActivity::class.java)
         loginLauncher.launch(intent)
+    }
+
+    private fun launchCodexLogin() {
+        val intent = Intent(this, CodexLoginActivity::class.java)
+        codexLoginLauncher.launch(intent)
     }
 
     private fun handleNotificationToggle(enabled: Boolean) {

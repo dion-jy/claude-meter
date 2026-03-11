@@ -29,6 +29,11 @@ val StatusExtra = Color(0xFF10B981)
 val StatusExtraLight = Color(0xFF34D399)
 val StatusOpus = Color(0xFFF59E0B)
 
+// Codex / ChatGPT brand colors
+val CodexGreen = Color(0xFF10A37F)
+val CodexGreenLight = Color(0xFF1AC99A)
+val CodexGreenDark = Color(0xFF0D8066)
+
 // Progress bar backgrounds
 val ProgressTrack = Color(0xFF2A2A40)
 
