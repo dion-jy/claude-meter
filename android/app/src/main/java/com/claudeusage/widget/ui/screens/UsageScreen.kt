@@ -56,21 +56,21 @@ fun UsageScreen(
     if (showLogoutDialog) {
         AlertDialog(
             onDismissRequest = { showLogoutDialog = false },
-            title = { Text("로그아웃", fontWeight = FontWeight.Bold) },
+            title = { Text("Logout", fontWeight = FontWeight.Bold) },
             text = {
-                Text("정말 로그아웃 하시겠습니까?")
+                Text("Are you sure you want to logout?")
             },
             confirmButton = {
                 TextButton(onClick = {
                     showLogoutDialog = false
                     onLogout()
                 }) {
-                    Text("로그아웃", color = MaterialTheme.colorScheme.error)
+                    Text("Logout", color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showLogoutDialog = false }) {
-                    Text("취소")
+                    Text("Cancel")
                 }
             }
         )
