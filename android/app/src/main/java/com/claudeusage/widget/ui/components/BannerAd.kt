@@ -13,13 +13,14 @@ private const val BANNER_AD_UNIT_ID = "ca-app-pub-8064366969131187/1232696044"
 
 @Composable
 fun BannerAd(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    adSize: AdSize = AdSize.BANNER
 ) {
     AndroidView(
         modifier = modifier.fillMaxWidth(),
         factory = { context ->
             AdView(context).apply {
-                setAdSize(AdSize.BANNER)
+                setAdSize(adSize)
                 adUnitId = BANNER_AD_UNIT_ID
                 layoutParams = FrameLayout.LayoutParams(
                     FrameLayout.LayoutParams.MATCH_PARENT,

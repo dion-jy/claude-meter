@@ -61,7 +61,10 @@ fun UsageScreen(
                 Column {
                     Text("정말 로그아웃 하시겠습니까?")
                     Spacer(modifier = Modifier.height(16.dp))
-                    BannerAd(modifier = Modifier.fillMaxWidth())
+                    BannerAd(
+                        modifier = Modifier.fillMaxWidth(),
+                        adSize = com.google.android.gms.ads.AdSize.MEDIUM_RECTANGLE
+                    )
                 }
             },
             confirmButton = {
