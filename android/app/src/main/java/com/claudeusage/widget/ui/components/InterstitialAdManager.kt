@@ -7,7 +7,7 @@ import com.google.android.gms.ads.LoadAdError
 import com.google.android.gms.ads.interstitial.InterstitialAd
 import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
 
-private const val INTERSTITIAL_AD_UNIT_ID = "ca-app-pub-8064366969131187/1028803027"
+private const val INTERSTITIAL_AD_UNIT_ID = "ca-app-pub-8064366969131187/5398934083"
 
 class InterstitialAdManager {
 
