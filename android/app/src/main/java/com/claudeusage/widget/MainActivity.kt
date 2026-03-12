@@ -27,6 +27,7 @@ import com.claudeusage.widget.ui.screens.SettingsScreen
 import com.claudeusage.widget.ui.screens.UiState
 import com.claudeusage.widget.ui.screens.UsageScreen
 import com.claudeusage.widget.ui.screens.UsageViewModel
+import com.claudeusage.widget.ui.components.InterstitialAdManager
 import com.claudeusage.widget.ui.theme.ClaudeUsageTheme
 
 private enum class Screen { Usage, Settings, Forecast }
@@ -41,6 +42,7 @@ class MainActivity : ComponentActivity() {
     private var coachEnabled by mutableStateOf(true)
     private var themeMode by mutableStateOf(AppPreferences.THEME_DARK)
     private val metricVisibility = mutableStateMapOf<String, Boolean>()
+    private val interstitialAdManager = InterstitialAdManager()
 
     private val loginLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -91,6 +93,9 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        // Preload interstitial ad
+        interstitialAdManager.load(this)
+
         // Schedule background updates
         UsageUpdateScheduler.schedule(applicationContext)
 
@@ -117,8 +122,10 @@ class MainActivity : ComponentActivity() {
                                 .keys,
                             onRefresh = viewModel::refresh,
                             onLogout = {
-                                viewModel.logout()
-                                UsageUpdateScheduler.cancel(applicationContext)
+                                interstitialAdManager.showThen(this@MainActivity) {
+                                    viewModel.logout()
+                                    UsageUpdateScheduler.cancel(applicationContext)
+                                }
                             },
                             onLoginClick = { launchLogin() },
                             onManualLogin = { sessionKey ->
@@ -177,10 +184,16 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        viewModel.onAppForeground()
         val state = viewModel.uiState.value
         if (state is UiState.Success) {
             viewModel.refresh()
         }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        viewModel.onAppBackground()
     }
 
     private fun launchLogin() {

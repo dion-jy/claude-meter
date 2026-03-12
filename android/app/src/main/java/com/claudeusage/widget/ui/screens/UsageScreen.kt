@@ -51,6 +51,31 @@ fun UsageScreen(
     onSettingsClick: () -> Unit,
     onForecastClick: () -> Unit = {}
 ) {
+    var showLogoutDialog by remember { mutableStateOf(false) }
+
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            title = { Text("Logout", fontWeight = FontWeight.Bold) },
+            text = {
+                Text("Are you sure you want to logout?")
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showLogoutDialog = false
+                    onLogout()
+                }) {
+                    Text("Logout", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -92,7 +117,7 @@ fun UsageScreen(
                                 )
                             }
                         }
-                        IconButton(onClick = onLogout) {
+                        IconButton(onClick = { showLogoutDialog = true }) {
                             Icon(
                                 Icons.Default.Logout,
                                 contentDescription = "Logout",
