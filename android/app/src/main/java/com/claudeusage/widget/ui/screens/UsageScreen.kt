@@ -6,6 +6,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -791,6 +792,25 @@ private fun CodexUsageBar(data: CodexUsageData) {
                     text = "Resets in ${h}h ${m}m",
                     color = ExtendedTheme.colors.textMuted,
                     fontSize = 11.sp
+                )
+            }
+        }
+
+        // Debug: show raw JSON when no valid usage parsed
+        if (!data.hasValidUsage && data.rawJson.isNotBlank()) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "API response (debug):",
+                color = ExtendedTheme.colors.textMuted,
+                fontSize = 10.sp
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            SelectionContainer {
+                Text(
+                    text = data.rawJson.take(500),
+                    color = ExtendedTheme.colors.textMuted,
+                    fontSize = 9.sp,
+                    lineHeight = 12.sp
                 )
             }
         }
