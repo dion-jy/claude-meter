@@ -122,6 +122,12 @@ class CodexLoginActivity : ComponentActivity() {
     companion object {
         const val EXTRA_COOKIES = "codex_cookies"
 
+        // Chrome Mobile User-Agent (without "wv" / "Version/4.0" that marks WebViews).
+        // This allows Google OAuth to work inside the WebView.
+        private const val CHROME_USER_AGENT =
+            "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 " +
+            "(KHTML, like Gecko) Chrome/121.0.6167.143 Mobile Safari/537.36"
+
         // JS to hide social OAuth buttons (Google, Microsoft, Apple) on OpenAI auth pages.
         // Google OAuth blocks WebView with "disallowed_useragent" error.
         // Users must use email + verification code login instead.
@@ -266,6 +272,12 @@ private fun CodexLoginWebViewScreen(
                             settings.setSupportMultipleWindows(false)
                             settings.javaScriptCanOpenWindowsAutomatically = true
 
+                            // Override User-Agent to look like regular Chrome browser.
+                            // Google blocks OAuth in WebViews by detecting "wv" and
+                            // "Version/X.X" in the UA string. Removing these allows
+                            // Google/Microsoft/Apple SSO to work normally.
+                            settings.userAgentString = CHROME_USER_AGENT
+
                             val webView = this
                             try {
                                 val cookieManager = CookieManager.getInstance()
@@ -288,15 +300,9 @@ private fun CodexLoginWebViewScreen(
 
                                     val isAuthPage = url?.contains("/auth") == true
                                             || url?.contains("auth0.openai.com") == true
+                                            || url?.contains("accounts.google.com") == true
                                     showHint = isAuthPage
-
-                                    // Hide social OAuth buttons on auth pages
-                                    if (isAuthPage) {
-                                        view?.evaluateJavascript(
-                                            CodexLoginActivity.HIDE_SOCIAL_BUTTONS_JS,
-                                            null
-                                        )
-                                    }
+                                            && url?.contains("accounts.google.com") != true
 
                                     // Only check cookies on non-auth pages (post-login)
                                     if (!isAuthPage && url?.contains("chatgpt.com") == true) {
@@ -332,7 +338,7 @@ private fun CodexLoginWebViewScreen(
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Text(
-                            text = "Use email login (Google/Apple sign-in is not supported in-app).",
+                            text = "Sign in with your ChatGPT account to track Codex usage.",
                             modifier = Modifier.padding(16.dp),
                             color = MaterialTheme.colorScheme.onBackground,
                             fontSize = 13.sp,
