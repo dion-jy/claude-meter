@@ -124,7 +124,7 @@ class CodexLoginActivity : ComponentActivity() {
 
         // Chrome Mobile User-Agent (without "wv" / "Version/4.0" that marks WebViews).
         // This allows Google OAuth to work inside the WebView.
-        private const val CHROME_USER_AGENT =
+        internal const val CHROME_USER_AGENT =
             "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 " +
             "(KHTML, like Gecko) Chrome/121.0.6167.143 Mobile Safari/537.36"
 
@@ -276,7 +276,7 @@ private fun CodexLoginWebViewScreen(
                             // Google blocks OAuth in WebViews by detecting "wv" and
                             // "Version/X.X" in the UA string. Removing these allows
                             // Google/Microsoft/Apple SSO to work normally.
-                            settings.userAgentString = CHROME_USER_AGENT
+                            settings.userAgentString = CodexLoginActivity.CHROME_USER_AGENT
 
                             val webView = this
                             try {
