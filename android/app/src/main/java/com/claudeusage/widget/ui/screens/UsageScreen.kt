@@ -402,9 +402,6 @@ private fun UsageContent(
         val filteredMetrics = data.extraMetrics.filter { (label, _) ->
             when {
                 label.contains("Sonnet") -> "sonnet" in visibleMetrics
-                label.contains("Opus") -> "opus" in visibleMetrics
-                label.contains("Cowork") -> "cowork" in visibleMetrics
-                label.contains("OAuth") -> "oauth_apps" in visibleMetrics
                 label.contains("Extra") -> "extra_usage" in visibleMetrics
                 else -> true
             }
@@ -425,13 +422,15 @@ private fun UsageContent(
             }
         }
 
-        // Codex usage section
-        Spacer(modifier = Modifier.height(20.dp))
-        CodexSection(
-            codexState = codexState,
-            onCodexLoginClick = onCodexLoginClick,
-            onCodexLogout = onCodexLogout
-        )
+        // Codex usage section (toggled by settings)
+        if ("codex_usage" in visibleMetrics) {
+            Spacer(modifier = Modifier.height(20.dp))
+            CodexSection(
+                codexState = codexState,
+                onCodexLoginClick = onCodexLoginClick,
+                onCodexLogout = onCodexLogout
+            )
+        }
 
         // Last updated
         if (lastUpdated != null) {
@@ -630,6 +629,31 @@ private fun CodexSection(
     onCodexLoginClick: () -> Unit,
     onCodexLogout: () -> Unit
 ) {
+    var showDisconnectDialog by remember { mutableStateOf(false) }
+
+    if (showDisconnectDialog) {
+        AlertDialog(
+            onDismissRequest = { showDisconnectDialog = false },
+            title = { Text("Disconnect Codex", fontWeight = FontWeight.Bold) },
+            text = {
+                Text("Are you sure you want to disconnect your ChatGPT account?")
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDisconnectDialog = false
+                    onCodexLogout()
+                }) {
+                    Text("Disconnect", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDisconnectDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = ExtendedTheme.colors.cardBackground),
@@ -642,12 +666,20 @@ private fun CodexSection(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
-                    Text(
-                        text = "Codex Usage",
-                        color = CodexGreen,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "Codex Usage",
+                            color = CodexGreen,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "(beta)",
+                            color = ExtendedTheme.colors.textMuted,
+                            fontSize = 11.sp
+                        )
+                    }
                     Text(
                         text = "ChatGPT / Codex",
                         color = ExtendedTheme.colors.textMuted,
@@ -655,7 +687,7 @@ private fun CodexSection(
                     )
                 }
                 if (codexState is CodexUiState.Connected) {
-                    TextButton(onClick = onCodexLogout) {
+                    TextButton(onClick = { showDisconnectDialog = true }) {
                         Text(
                             text = "Disconnect",
                             color = ExtendedTheme.colors.textMuted,

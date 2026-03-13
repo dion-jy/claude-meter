@@ -90,10 +90,8 @@ class MainActivity : ComponentActivity() {
 
         // Load metric visibility from preferences
         metricVisibility["sonnet"] = appPreferences.showSonnet
-        metricVisibility["opus"] = appPreferences.showOpus
-        metricVisibility["cowork"] = appPreferences.showCowork
-        metricVisibility["oauth_apps"] = appPreferences.showOauthApps
         metricVisibility["extra_usage"] = appPreferences.showExtraUsage
+        metricVisibility["codex_usage"] = appPreferences.showCodexUsage
 
         // Request notification permission on first launch (Android 13+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -147,18 +145,19 @@ class MainActivity : ComponentActivity() {
                             onSettingsClick = { currentScreen = Screen.Settings },
                             onForecastClick = { currentScreen = Screen.Forecast },
                             onCodexLoginClick = { launchCodexLogin() },
-                            onCodexLogout = { viewModel.logoutCodex() }
+                            onCodexLogout = {
+                                interstitialAdManager.showThen(this@MainActivity) {
+                                    viewModel.logoutCodex()
+                                }
+                            }
                         )
                     }
                     Screen.Settings -> {
                         BackHandler { currentScreen = Screen.Usage }
-                        // Always show all toggles
                         val availableToggles = listOf(
                             MetricToggle("sonnet", "Sonnet (7d)", metricVisibility["sonnet"] ?: true),
-                            MetricToggle("opus", "Opus (7d)", metricVisibility["opus"] ?: false),
-                            MetricToggle("cowork", "Cowork (7d)", metricVisibility["cowork"] ?: false),
-                            MetricToggle("oauth_apps", "OAuth Apps (7d)", metricVisibility["oauth_apps"] ?: false),
-                            MetricToggle("extra_usage", "Extra Usage", metricVisibility["extra_usage"] ?: true)
+                            MetricToggle("extra_usage", "Extra Usage", metricVisibility["extra_usage"] ?: true),
+                            MetricToggle("codex_usage", "Codex Usage", metricVisibility["codex_usage"] ?: true)
                         )
 
                         SettingsScreen(
@@ -255,10 +254,8 @@ class MainActivity : ComponentActivity() {
         metricVisibility[key] = enabled
         when (key) {
             "sonnet" -> appPreferences.showSonnet = enabled
-            "opus" -> appPreferences.showOpus = enabled
-            "cowork" -> appPreferences.showCowork = enabled
-            "oauth_apps" -> appPreferences.showOauthApps = enabled
             "extra_usage" -> appPreferences.showExtraUsage = enabled
+            "codex_usage" -> appPreferences.showCodexUsage = enabled
         }
     }
 }
