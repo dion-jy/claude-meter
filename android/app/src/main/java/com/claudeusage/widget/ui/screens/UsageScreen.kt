@@ -867,11 +867,19 @@ private fun CodexWindowRow(
     if (resetAt != null) {
         val remaining = Duration.between(Instant.now(), resetAt)
         if (!remaining.isNegative) {
-            val h = remaining.toHours()
-            val m = remaining.toMinutes() % 60
+            val totalSeconds = remaining.seconds
+            val days = totalSeconds / 86400
+            val h = (totalSeconds % 86400) / 3600
+            val m = (totalSeconds % 3600) / 60
+            val resetText = when {
+                days > 0 -> "Resets in ${days}d ${h}h"
+                h > 0 -> "Resets in ${h}h ${m}m"
+                m > 0 -> "Resets in ${m}m"
+                else -> "Resetting soon..."
+            }
             Spacer(modifier = Modifier.height(2.dp))
             Text(
-                text = "Resets in ${h}h ${m}m",
+                text = resetText,
                 color = ExtendedTheme.colors.textMuted,
                 fontSize = 10.sp
             )
