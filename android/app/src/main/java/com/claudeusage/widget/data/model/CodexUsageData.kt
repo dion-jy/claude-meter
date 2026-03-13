@@ -4,60 +4,76 @@ import org.json.JSONObject
 import java.time.Instant
 
 data class CodexUsageData(
-    val minutesRemaining: Int?,
-    val minutesLimit: Int?,
-    val resetsAt: Instant?,
-    val utilizationPercent: Double,
+    val planType: String?,
+    val primaryWindow: UsageWindow?,
+    val secondaryWindow: UsageWindow?,
+    val allowed: Boolean,
+    val limitReached: Boolean,
     val fetchedAt: Instant = Instant.now(),
     val rawJson: String = ""
 ) {
+    /** True when we successfully parsed at least one usage window */
     val hasValidUsage: Boolean
-        get() = minutesLimit != null && minutesLimit > 0
+        get() = primaryWindow != null || secondaryWindow != null
+
+    /** The higher of the two windows' used_percent, for the main display */
+    val utilizationPercent: Double
+        get() {
+            val p = primaryWindow?.usedPercent ?: 0.0
+            val s = secondaryWindow?.usedPercent ?: 0.0
+            return maxOf(p, s)
+        }
+
+    /** The earliest upcoming reset from either window */
+    val nextResetAt: Instant?
+        get() {
+            val resets = listOfNotNull(primaryWindow?.resetAt, secondaryWindow?.resetAt)
+            return resets.filter { it.isAfter(Instant.now()) }.minOrNull()
+        }
+
+    data class UsageWindow(
+        val usedPercent: Double,
+        val limitWindowSeconds: Long,
+        val resetAfterSeconds: Long,
+        val resetAt: Instant?
+    ) {
+        val windowLabel: String
+            get() = when {
+                limitWindowSeconds <= 21600 -> "5h" // up to 6 hours → primary
+                limitWindowSeconds <= 86400 -> "daily"
+                else -> "weekly"
+            }
+    }
 
     companion object {
         fun fromJson(json: JSONObject): CodexUsageData {
-            val remaining = json.optIntOrNull("minutes_remaining")
-            val limit = json.optIntOrNull("minutes_limit")
-                ?: json.optIntOrNull("total")
-                ?: json.optIntOrNull("limit")
-            val used = json.optIntOrNull("minutes_used")
-                ?: json.optIntOrNull("used")
+            val planType = json.optString("plan_type", null)
+            val rateLimit = json.optJSONObject("rate_limit")
 
-            val resetsAt = json.optStringOrNull("reset_at")
-                ?: json.optStringOrNull("resets_at")
-                ?: json.optStringOrNull("next_reset")
+            val allowed = rateLimit?.optBoolean("allowed", true) ?: true
+            val limitReached = rateLimit?.optBoolean("limit_reached", false) ?: false
 
-            val effectiveRemaining = remaining
-                ?: if (limit != null && used != null) (limit - used) else null
-
-            val utilization = when {
-                limit != null && limit > 0 && effectiveRemaining != null -> {
-                    ((limit - effectiveRemaining).toDouble() / limit) * 100
-                }
-                limit != null && limit > 0 && used != null -> {
-                    (used.toDouble() / limit) * 100
-                }
-                json.has("utilization") -> json.optDouble("utilization", 0.0)
-                else -> 0.0
-            }
+            val primaryWindow = rateLimit?.optJSONObject("primary_window")?.let { parseWindow(it) }
+            val secondaryWindow = rateLimit?.optJSONObject("secondary_window")?.let { parseWindow(it) }
 
             return CodexUsageData(
-                minutesRemaining = effectiveRemaining,
-                minutesLimit = limit,
-                resetsAt = resetsAt?.let {
-                    try { Instant.parse(it) } catch (_: Exception) { null }
-                },
-                utilizationPercent = utilization.coerceIn(0.0, 100.0),
+                planType = planType,
+                primaryWindow = primaryWindow,
+                secondaryWindow = secondaryWindow,
+                allowed = allowed,
+                limitReached = limitReached,
                 rawJson = json.toString()
             )
         }
 
-        private fun JSONObject.optIntOrNull(key: String): Int? {
-            return if (has(key) && !isNull(key)) optInt(key) else null
-        }
-
-        private fun JSONObject.optStringOrNull(key: String): String? {
-            return if (has(key) && !isNull(key)) optString(key).takeIf { it.isNotBlank() } else null
+        private fun parseWindow(json: JSONObject): UsageWindow {
+            val resetEpoch = json.optLong("reset_at", 0L)
+            return UsageWindow(
+                usedPercent = json.optDouble("used_percent", 0.0),
+                limitWindowSeconds = json.optLong("limit_window_seconds", 0L),
+                resetAfterSeconds = json.optLong("reset_after_seconds", 0L),
+                resetAt = if (resetEpoch > 0) Instant.ofEpochSecond(resetEpoch) else null
+            )
         }
     }
 }

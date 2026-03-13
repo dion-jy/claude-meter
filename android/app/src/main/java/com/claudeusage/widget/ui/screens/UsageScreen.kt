@@ -6,7 +6,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -727,92 +726,123 @@ private fun CodexSection(
 
 @Composable
 private fun CodexUsageBar(data: CodexUsageData) {
+    val progressTrackColor = ExtendedTheme.colors.progressTrack
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        // Limit reached warning
+        if (data.limitReached) {
+            Text(
+                text = "Rate limit reached",
+                color = StatusCritical,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+        }
+
+        // Primary window (5h)
+        data.primaryWindow?.let { window ->
+            CodexWindowRow(
+                label = "5h window",
+                usedPercent = window.usedPercent,
+                resetAt = window.resetAt,
+                progressTrackColor = progressTrackColor
+            )
+        }
+
+        // Secondary window (weekly)
+        data.secondaryWindow?.let { window ->
+            if (data.primaryWindow != null) {
+                Spacer(modifier = Modifier.height(10.dp))
+            }
+            CodexWindowRow(
+                label = "Weekly",
+                usedPercent = window.usedPercent,
+                resetAt = window.resetAt,
+                progressTrackColor = progressTrackColor
+            )
+        }
+
+        // Plan type
+        if (data.planType != null) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Plan: ${data.planType}",
+                color = ExtendedTheme.colors.textMuted,
+                fontSize = 10.sp
+            )
+        }
+    }
+}
+
+@Composable
+private fun CodexWindowRow(
+    label: String,
+    usedPercent: Double,
+    resetAt: Instant?,
+    progressTrackColor: Color
+) {
     val gradient = Brush.horizontalGradient(
         colors = listOf(CodexGreen, CodexGreenLight)
     )
     val animatedProgress by animateFloatAsState(
-        targetValue = (data.utilizationPercent / 100.0).toFloat().coerceIn(0f, 1f),
+        targetValue = (usedPercent / 100.0).toFloat().coerceIn(0f, 1f),
         animationSpec = tween(durationMillis = 800),
-        label = "codex_progress"
+        label = "codex_progress_$label"
     )
-    val progressTrackColor = ExtendedTheme.colors.progressTrack
 
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Remaining info
-            if (data.minutesRemaining != null && data.minutesLimit != null) {
-                Text(
-                    text = "${data.minutesRemaining}/${data.minutesLimit} min remaining",
-                    color = ExtendedTheme.colors.textSecondary,
-                    fontSize = 12.sp
-                )
-            }
-            Text(
-                text = "${String.format("%.1f", data.utilizationPercent)}%",
-                color = CodexGreen,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold
-            )
-        }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            color = ExtendedTheme.colors.textSecondary,
+            fontSize = 12.sp
+        )
+        Text(
+            text = "${String.format("%.1f", usedPercent)}%",
+            color = if (usedPercent >= 80) StatusCritical else CodexGreen,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold
+        )
+    }
 
-        Spacer(modifier = Modifier.height(6.dp))
+    Spacer(modifier = Modifier.height(4.dp))
 
-        // Progress bar
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(10.dp)
-                .clip(RoundedCornerShape(5.dp))
-        ) {
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                val cr = CornerRadius(5.dp.toPx())
-                drawRoundRect(color = progressTrackColor, cornerRadius = cr)
-                if (animatedProgress > 0f) {
-                    drawRoundRect(
-                        brush = gradient,
-                        size = Size(size.width * animatedProgress, size.height),
-                        cornerRadius = cr
-                    )
-                }
-            }
-        }
-
-        // Reset time
-        if (data.resetsAt != null) {
-            val remaining = Duration.between(Instant.now(), data.resetsAt)
-            if (!remaining.isNegative) {
-                val h = remaining.toHours()
-                val m = remaining.toMinutes() % 60
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Resets in ${h}h ${m}m",
-                    color = ExtendedTheme.colors.textMuted,
-                    fontSize = 11.sp
+    // Progress bar
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(8.dp)
+            .clip(RoundedCornerShape(4.dp))
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val cr = CornerRadius(4.dp.toPx())
+            drawRoundRect(color = progressTrackColor, cornerRadius = cr)
+            if (animatedProgress > 0f) {
+                drawRoundRect(
+                    brush = gradient,
+                    size = Size(size.width * animatedProgress, size.height),
+                    cornerRadius = cr
                 )
             }
         }
+    }
 
-        // Debug: show raw JSON when no valid usage parsed
-        if (!data.hasValidUsage && data.rawJson.isNotBlank()) {
-            Spacer(modifier = Modifier.height(8.dp))
+    // Reset time
+    if (resetAt != null) {
+        val remaining = Duration.between(Instant.now(), resetAt)
+        if (!remaining.isNegative) {
+            val h = remaining.toHours()
+            val m = remaining.toMinutes() % 60
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
-                text = "API response (debug):",
+                text = "Resets in ${h}h ${m}m",
                 color = ExtendedTheme.colors.textMuted,
                 fontSize = 10.sp
             )
-            Spacer(modifier = Modifier.height(2.dp))
-            SelectionContainer {
-                Text(
-                    text = data.rawJson.take(500),
-                    color = ExtendedTheme.colors.textMuted,
-                    fontSize = 9.sp,
-                    lineHeight = 12.sp
-                )
-            }
         }
     }
 }
