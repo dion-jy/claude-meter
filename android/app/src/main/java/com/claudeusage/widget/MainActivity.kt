@@ -24,13 +24,14 @@ import com.claudeusage.widget.service.UsageUpdateScheduler
 import com.claudeusage.widget.ui.screens.ForecastScreen
 import com.claudeusage.widget.ui.screens.MetricToggle
 import com.claudeusage.widget.ui.screens.SettingsScreen
+import com.claudeusage.widget.ui.screens.PrivacyPolicyScreen
 import com.claudeusage.widget.ui.screens.UiState
 import com.claudeusage.widget.ui.screens.UsageScreen
 import com.claudeusage.widget.ui.screens.UsageViewModel
 import com.claudeusage.widget.ui.components.InterstitialAdManager
 import com.claudeusage.widget.ui.theme.ClaudeUsageTheme
 
-private enum class Screen { Usage, Settings, Forecast }
+private enum class Screen { Usage, Settings, Forecast, PrivacyPolicy }
 
 class MainActivity : ComponentActivity() {
 
@@ -179,7 +180,14 @@ class MainActivity : ComponentActivity() {
                                 themeMode = mode
                                 appPreferences.themeMode = mode
                             },
+                            onPrivacyPolicyClick = { currentScreen = Screen.PrivacyPolicy },
                             onBack = { currentScreen = Screen.Usage }
+                        )
+                    }
+                    Screen.PrivacyPolicy -> {
+                        BackHandler { currentScreen = Screen.Settings }
+                        PrivacyPolicyScreen(
+                            onBack = { currentScreen = Screen.Settings }
                         )
                     }
                     Screen.Forecast -> {

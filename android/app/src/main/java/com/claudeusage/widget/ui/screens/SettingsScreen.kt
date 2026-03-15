@@ -29,7 +29,6 @@ import com.claudeusage.widget.ui.theme.*
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
-private const val PRIVACY_POLICY_URL = "https://sites.google.com/view/claude-meter/privacy-policy"
 private const val DONATE_URL = "https://paypal.me/JunyeobBaek"
 private const val APP_VERSION = "1.3.0"
 
@@ -50,6 +49,7 @@ fun SettingsScreen(
     onMetricToggle: (String, Boolean) -> Unit,
     themeMode: String,
     onThemeModeChange: (String) -> Unit,
+    onPrivacyPolicyClick: () -> Unit = {},
     onBack: () -> Unit
 ) {
     val uriHandler = LocalUriHandler.current
@@ -229,7 +229,7 @@ fun SettingsScreen(
                     SettingsInfoRow(title = "Version", value = APP_VERSION)
                     SettingsDivider()
                     SettingsLinkRow(title = "Privacy Policy") {
-                        uriHandler.openUri(PRIVACY_POLICY_URL)
+                        onPrivacyPolicyClick()
                     }
                 }
             }
