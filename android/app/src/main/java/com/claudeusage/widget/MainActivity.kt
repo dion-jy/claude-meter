@@ -24,13 +24,14 @@ import com.claudeusage.widget.service.UsageUpdateScheduler
 import com.claudeusage.widget.ui.screens.ForecastScreen
 import com.claudeusage.widget.ui.screens.MetricToggle
 import com.claudeusage.widget.ui.screens.SettingsScreen
+import com.claudeusage.widget.ui.screens.PrivacyPolicyScreen
 import com.claudeusage.widget.ui.screens.UiState
 import com.claudeusage.widget.ui.screens.UsageScreen
 import com.claudeusage.widget.ui.screens.UsageViewModel
 import com.claudeusage.widget.ui.components.InterstitialAdManager
 import com.claudeusage.widget.ui.theme.ClaudeUsageTheme
 
-private enum class Screen { Usage, Settings, Forecast }
+private enum class Screen { Usage, Settings, Forecast, PrivacyPolicy }
 
 class MainActivity : ComponentActivity() {
 
@@ -51,6 +52,17 @@ class MainActivity : ComponentActivity() {
             val sessionKey = result.data?.getStringExtra(LoginActivity.EXTRA_SESSION_KEY)
             if (sessionKey != null) {
                 viewModel.onLoginComplete(sessionKey)
+            }
+        }
+    }
+
+    private val codexLoginLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == RESULT_OK) {
+            val cookies = result.data?.getStringExtra(CodexLoginActivity.EXTRA_COOKIES)
+            if (cookies != null) {
+                viewModel.onCodexLoginComplete(cookies)
             }
         }
     }
@@ -79,10 +91,8 @@ class MainActivity : ComponentActivity() {
 
         // Load metric visibility from preferences
         metricVisibility["sonnet"] = appPreferences.showSonnet
-        metricVisibility["opus"] = appPreferences.showOpus
-        metricVisibility["cowork"] = appPreferences.showCowork
-        metricVisibility["oauth_apps"] = appPreferences.showOauthApps
         metricVisibility["extra_usage"] = appPreferences.showExtraUsage
+        metricVisibility["codex_usage"] = appPreferences.showCodexUsage
 
         // Request notification permission on first launch (Android 13+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -110,6 +120,7 @@ class MainActivity : ComponentActivity() {
                 val isRefreshing by viewModel.isRefreshing.collectAsState()
                 val lastUpdated by viewModel.lastUpdated.collectAsState()
                 val usageHistory by viewModel.usageHistory.collectAsState()
+                val codexState by viewModel.codexState.collectAsState()
 
                 when (currentScreen) {
                     Screen.Usage -> {
@@ -120,6 +131,7 @@ class MainActivity : ComponentActivity() {
                             visibleMetrics = metricVisibility
                                 .filter { it.value }
                                 .keys,
+                            codexState = codexState,
                             onRefresh = viewModel::refresh,
                             onLogout = {
                                 interstitialAdManager.showThen(this@MainActivity) {
@@ -132,18 +144,21 @@ class MainActivity : ComponentActivity() {
                                 viewModel.onManualLogin(sessionKey)
                             },
                             onSettingsClick = { currentScreen = Screen.Settings },
-                            onForecastClick = { currentScreen = Screen.Forecast }
+                            onForecastClick = { currentScreen = Screen.Forecast },
+                            onCodexLoginClick = { launchCodexLogin() },
+                            onCodexLogout = {
+                                interstitialAdManager.showThen(this@MainActivity) {
+                                    viewModel.logoutCodex()
+                                }
+                            }
                         )
                     }
                     Screen.Settings -> {
                         BackHandler { currentScreen = Screen.Usage }
-                        // Always show all toggles
                         val availableToggles = listOf(
                             MetricToggle("sonnet", "Sonnet (7d)", metricVisibility["sonnet"] ?: true),
-                            MetricToggle("opus", "Opus (7d)", metricVisibility["opus"] ?: false),
-                            MetricToggle("cowork", "Cowork (7d)", metricVisibility["cowork"] ?: false),
-                            MetricToggle("oauth_apps", "OAuth Apps (7d)", metricVisibility["oauth_apps"] ?: false),
-                            MetricToggle("extra_usage", "Extra Usage", metricVisibility["extra_usage"] ?: true)
+                            MetricToggle("extra_usage", "Extra Usage", metricVisibility["extra_usage"] ?: true),
+                            MetricToggle("codex_usage", "Codex Usage", metricVisibility["codex_usage"] ?: true)
                         )
 
                         SettingsScreen(
@@ -165,7 +180,14 @@ class MainActivity : ComponentActivity() {
                                 themeMode = mode
                                 appPreferences.themeMode = mode
                             },
+                            onPrivacyPolicyClick = { currentScreen = Screen.PrivacyPolicy },
                             onBack = { currentScreen = Screen.Usage }
+                        )
+                    }
+                    Screen.PrivacyPolicy -> {
+                        BackHandler { currentScreen = Screen.Settings }
+                        PrivacyPolicyScreen(
+                            onBack = { currentScreen = Screen.Settings }
                         )
                     }
                     Screen.Forecast -> {
@@ -199,6 +221,11 @@ class MainActivity : ComponentActivity() {
     private fun launchLogin() {
         val intent = Intent(this, LoginActivity::class.java)
         loginLauncher.launch(intent)
+    }
+
+    private fun launchCodexLogin() {
+        val intent = Intent(this, CodexLoginActivity::class.java)
+        codexLoginLauncher.launch(intent)
     }
 
     private fun handleNotificationToggle(enabled: Boolean) {
@@ -235,10 +262,8 @@ class MainActivity : ComponentActivity() {
         metricVisibility[key] = enabled
         when (key) {
             "sonnet" -> appPreferences.showSonnet = enabled
-            "opus" -> appPreferences.showOpus = enabled
-            "cowork" -> appPreferences.showCowork = enabled
-            "oauth_apps" -> appPreferences.showOauthApps = enabled
             "extra_usage" -> appPreferences.showExtraUsage = enabled
+            "codex_usage" -> appPreferences.showCodexUsage = enabled
         }
     }
 }

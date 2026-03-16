@@ -17,21 +17,13 @@ class AppPreferences(context: Context) {
         get() = prefs.getBoolean(KEY_SHOW_SONNET, true)
         set(value) = prefs.edit().putBoolean(KEY_SHOW_SONNET, value).apply()
 
-    var showOpus: Boolean
-        get() = prefs.getBoolean(KEY_SHOW_OPUS, false)
-        set(value) = prefs.edit().putBoolean(KEY_SHOW_OPUS, value).apply()
-
-    var showCowork: Boolean
-        get() = prefs.getBoolean(KEY_SHOW_COWORK, false)
-        set(value) = prefs.edit().putBoolean(KEY_SHOW_COWORK, value).apply()
-
-    var showOauthApps: Boolean
-        get() = prefs.getBoolean(KEY_SHOW_OAUTH_APPS, false)
-        set(value) = prefs.edit().putBoolean(KEY_SHOW_OAUTH_APPS, value).apply()
-
     var showExtraUsage: Boolean
         get() = prefs.getBoolean(KEY_SHOW_EXTRA_USAGE, true)
         set(value) = prefs.edit().putBoolean(KEY_SHOW_EXTRA_USAGE, value).apply()
+
+    var showCodexUsage: Boolean
+        get() = prefs.getBoolean(KEY_SHOW_CODEX_USAGE, true)
+        set(value) = prefs.edit().putBoolean(KEY_SHOW_CODEX_USAGE, value).apply()
 
     /** "dark" (default), "light", or "system" */
     var themeMode: String
@@ -46,10 +38,8 @@ class AppPreferences(context: Context) {
         private const val PREFS_NAME = "claude_app_preferences"
         private const val KEY_NOTIFICATION_ENABLED = "notification_enabled"
         private const val KEY_SHOW_SONNET = "show_sonnet"
-        private const val KEY_SHOW_OPUS = "show_opus"
-        private const val KEY_SHOW_COWORK = "show_cowork"
-        private const val KEY_SHOW_OAUTH_APPS = "show_oauth_apps"
         private const val KEY_SHOW_EXTRA_USAGE = "show_extra_usage"
+        private const val KEY_SHOW_CODEX_USAGE = "show_codex_usage"
         private const val KEY_THEME_MODE = "theme_mode"
         private const val KEY_COACH_ENABLED = "coach_enabled"
 

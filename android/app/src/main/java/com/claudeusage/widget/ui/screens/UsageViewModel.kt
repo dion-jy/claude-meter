@@ -11,12 +11,16 @@ import androidx.lifecycle.viewModelScope
 import com.claudeusage.widget.MainActivity
 import com.claudeusage.widget.R
 import com.claudeusage.widget.data.local.AppPreferences
+import com.claudeusage.widget.data.local.CodexCredentialManager
 import com.claudeusage.widget.data.local.CredentialManager
 import com.claudeusage.widget.data.local.UsageHistoryEntry
 import com.claudeusage.widget.data.local.UsageHistoryStore
+import com.claudeusage.widget.data.model.CodexCredentials
+import com.claudeusage.widget.data.model.CodexUsageData
 import com.claudeusage.widget.data.model.Credentials
 import com.claudeusage.widget.data.model.UsageData
 import com.claudeusage.widget.data.repository.AuthException
+import com.claudeusage.widget.data.repository.CodexUsageRepository
 import com.claudeusage.widget.data.repository.RateLimitException
 import com.claudeusage.widget.data.repository.UsageRepository
 import com.claudeusage.widget.service.UsageNotificationService
@@ -34,15 +38,24 @@ import java.time.Duration
 sealed class UiState {
     data object Loading : UiState()
     data object LoginRequired : UiState()
-    data class Success(val data: UsageData) : UiState()
+    data class Success(val data: UsageData, val codexData: CodexUsageData? = null) : UiState()
     data class Error(val message: String, val isAuthError: Boolean = false) : UiState()
+}
+
+sealed class CodexUiState {
+    data object NotConnected : CodexUiState()
+    data object Loading : CodexUiState()
+    data class Connected(val data: CodexUsageData) : CodexUiState()
+    data class Error(val message: String, val isAuthError: Boolean = false) : CodexUiState()
 }
 
 class UsageViewModel(application: Application) : AndroidViewModel(application) {
 
     private val credentialManager = CredentialManager(application)
+    private val codexCredentialManager = CodexCredentialManager(application)
     private val appPreferences = AppPreferences(application)
     private val repository = UsageRepository()
+    private val codexRepository = CodexUsageRepository()
     private val historyStore = UsageHistoryStore(application)
 
     private val _uiState = MutableStateFlow<UiState>(UiState.Loading)
@@ -57,6 +70,9 @@ class UsageViewModel(application: Application) : AndroidViewModel(application) {
     private val _usageHistory = MutableStateFlow<List<UsageHistoryEntry>>(emptyList())
     val usageHistory: StateFlow<List<UsageHistoryEntry>> = _usageHistory.asStateFlow()
 
+    private val _codexState = MutableStateFlow<CodexUiState>(CodexUiState.NotConnected)
+    val codexState: StateFlow<CodexUiState> = _codexState.asStateFlow()
+
     private var autoRefreshJob: Job? = null
     private val fetchMutex = Mutex()
     private var isAppInForeground = false
@@ -70,6 +86,7 @@ class UsageViewModel(application: Application) : AndroidViewModel(application) {
         createCoachNotificationChannel()
         _usageHistory.value = historyStore.getHistory()
         checkCredentialsAndLoad()
+        checkCodexCredentials()
     }
 
     fun checkCredentialsAndLoad() {
@@ -138,6 +155,83 @@ class UsageViewModel(application: Application) : AndroidViewModel(application) {
         UsageNotificationService.stop(getApplication())
     }
 
+    // --- Codex ---
+
+    private fun checkCodexCredentials() {
+        viewModelScope.launch {
+            if (codexCredentialManager.hasCredentials()) {
+                fetchCodexUsageData()
+            }
+        }
+    }
+
+    fun onCodexLoginComplete(cookies: String) {
+        viewModelScope.launch {
+            _codexState.value = CodexUiState.Loading
+            val tokenResult = codexRepository.fetchAccessToken(cookies)
+            tokenResult.fold(
+                onSuccess = { accessToken ->
+                    val credentials = CodexCredentials(accessToken, cookies)
+                    codexCredentialManager.saveCredentials(credentials)
+                    fetchCodexUsageData()
+                },
+                onFailure = { error ->
+                    _codexState.value = CodexUiState.Error(
+                        message = error.message ?: "Failed to get access token.",
+                        isAuthError = error is AuthException
+                    )
+                }
+            )
+        }
+    }
+
+    private suspend fun fetchCodexUsageData() {
+        val credentials = codexCredentialManager.getCredentials()
+        if (credentials == null) {
+            _codexState.value = CodexUiState.NotConnected
+            return
+        }
+
+        _codexState.value = CodexUiState.Loading
+        val result = codexRepository.fetchUsageData(credentials)
+        result.fold(
+            onSuccess = { data ->
+                _codexState.value = CodexUiState.Connected(data)
+                // Also merge into main UiState if Claude is already loaded
+                val current = _uiState.value
+                if (current is UiState.Success) {
+                    _uiState.value = current.copy(codexData = data)
+                }
+            },
+            onFailure = { error ->
+                val isAuth = error is AuthException
+                if (isAuth) {
+                    codexCredentialManager.clearCredentials()
+                }
+                _codexState.value = CodexUiState.Error(
+                    message = error.message ?: "Failed to fetch Codex usage.",
+                    isAuthError = isAuth
+                )
+            }
+        )
+    }
+
+    fun logoutCodex() {
+        codexCredentialManager.clearCredentials()
+        _codexState.value = CodexUiState.NotConnected
+        // Remove codex data from main state
+        val current = _uiState.value
+        if (current is UiState.Success) {
+            _uiState.value = current.copy(codexData = null)
+        }
+    }
+
+    fun refreshCodex() {
+        viewModelScope.launch {
+            fetchCodexUsageData()
+        }
+    }
+
     private suspend fun fetchUsageData() = fetchMutex.withLock {
         val credentials = credentialManager.getCredentials()
         if (credentials == null) {
@@ -200,6 +294,9 @@ class UsageViewModel(application: Application) : AndroidViewModel(application) {
                 delay(UPDATE_INTERVAL_MS)
                 if (!isAppInForeground) break
                 fetchUsageData()
+                if (codexCredentialManager.hasCredentials()) {
+                    fetchCodexUsageData()
+                }
             }
         }
     }

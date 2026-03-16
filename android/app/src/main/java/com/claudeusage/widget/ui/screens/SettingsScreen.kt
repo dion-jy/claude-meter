@@ -29,10 +29,8 @@ import com.claudeusage.widget.ui.theme.*
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
-private const val GITHUB_URL = "https://github.com/CUN-bjy/claude-meter"
-private const val PRIVACY_POLICY_URL = "https://github.com/CUN-bjy/claude-meter/blob/main_app/PRIVACY_POLICY.md"
 private const val DONATE_URL = "https://paypal.me/JunyeobBaek"
-private const val APP_VERSION = "1.0.0"
+private const val APP_VERSION = "1.3.0"
 
 data class MetricToggle(
     val key: String,
@@ -51,6 +49,7 @@ fun SettingsScreen(
     onMetricToggle: (String, Boolean) -> Unit,
     themeMode: String,
     onThemeModeChange: (String) -> Unit,
+    onPrivacyPolicyClick: () -> Unit = {},
     onBack: () -> Unit
 ) {
     val uriHandler = LocalUriHandler.current
@@ -229,12 +228,8 @@ fun SettingsScreen(
                 Column {
                     SettingsInfoRow(title = "Version", value = APP_VERSION)
                     SettingsDivider()
-                    SettingsLinkRow(title = "GitHub") {
-                        uriHandler.openUri(GITHUB_URL)
-                    }
-                    SettingsDivider()
                     SettingsLinkRow(title = "Privacy Policy") {
-                        uriHandler.openUri(PRIVACY_POLICY_URL)
+                        onPrivacyPolicyClick()
                     }
                 }
             }

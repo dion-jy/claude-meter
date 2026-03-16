@@ -35,6 +35,11 @@
             android:theme="@style/Theme.ClaudeUsage" />
 
         <activity
+            android:name=".CodexLoginActivity"
+            android:exported="false"
+            android:theme="@style/Theme.ClaudeUsage" />
+
+        <activity
             android:name=".CrashActivity"
             android:exported="false"
             android:process=":crash"

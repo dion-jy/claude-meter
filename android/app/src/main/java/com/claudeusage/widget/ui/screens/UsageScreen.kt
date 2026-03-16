@@ -31,11 +31,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.claudeusage.widget.data.model.CodexUsageData
 import com.claudeusage.widget.data.model.ExtraUsageInfo
 import com.claudeusage.widget.data.model.UsageData
 import com.claudeusage.widget.ui.components.BannerAd
 import com.claudeusage.widget.ui.components.UsageProgressBar
 import com.claudeusage.widget.ui.theme.*
+import java.time.Duration
+import java.time.Instant
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,12 +47,15 @@ fun UsageScreen(
     isRefreshing: Boolean,
     lastUpdated: String?,
     visibleMetrics: Set<String>,
+    codexState: CodexUiState = CodexUiState.NotConnected,
     onRefresh: () -> Unit,
     onLogout: () -> Unit,
     onLoginClick: () -> Unit,
     onManualLogin: (String) -> Unit,
     onSettingsClick: () -> Unit,
-    onForecastClick: () -> Unit = {}
+    onForecastClick: () -> Unit = {},
+    onCodexLoginClick: () -> Unit = {},
+    onCodexLogout: () -> Unit = {}
 ) {
     var showLogoutDialog by remember { mutableStateOf(false) }
 
@@ -148,7 +154,10 @@ fun UsageScreen(
                 is UiState.Success -> UsageContent(
                     data = uiState.data,
                     lastUpdated = lastUpdated,
-                    visibleMetrics = visibleMetrics
+                    visibleMetrics = visibleMetrics,
+                    codexState = codexState,
+                    onCodexLoginClick = onCodexLoginClick,
+                    onCodexLogout = onCodexLogout
                 )
                 is UiState.Error -> ErrorContent(
                     message = uiState.message,
@@ -358,7 +367,10 @@ private fun LoginContent(
 private fun UsageContent(
     data: UsageData,
     lastUpdated: String?,
-    visibleMetrics: Set<String>
+    visibleMetrics: Set<String>,
+    codexState: CodexUiState = CodexUiState.NotConnected,
+    onCodexLoginClick: () -> Unit = {},
+    onCodexLogout: () -> Unit = {}
 ) {
     val scrollState = rememberScrollState()
 
@@ -390,9 +402,6 @@ private fun UsageContent(
         val filteredMetrics = data.extraMetrics.filter { (label, _) ->
             when {
                 label.contains("Sonnet") -> "sonnet" in visibleMetrics
-                label.contains("Opus") -> "opus" in visibleMetrics
-                label.contains("Cowork") -> "cowork" in visibleMetrics
-                label.contains("OAuth") -> "oauth_apps" in visibleMetrics
                 label.contains("Extra") -> "extra_usage" in visibleMetrics
                 else -> true
             }
@@ -411,6 +420,16 @@ private fun UsageContent(
                     MiniUsageCard(label = label, metric = metric)
                 }
             }
+        }
+
+        // Codex usage section (toggled by settings)
+        if ("codex_usage" in visibleMetrics) {
+            Spacer(modifier = Modifier.height(20.dp))
+            CodexSection(
+                codexState = codexState,
+                onCodexLoginClick = onCodexLoginClick,
+                onCodexLogout = onCodexLogout
+            )
         }
 
         // Last updated
@@ -600,6 +619,270 @@ private fun ExtraUsageBar(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun CodexSection(
+    codexState: CodexUiState,
+    onCodexLoginClick: () -> Unit,
+    onCodexLogout: () -> Unit
+) {
+    var showDisconnectDialog by remember { mutableStateOf(false) }
+
+    if (showDisconnectDialog) {
+        AlertDialog(
+            onDismissRequest = { showDisconnectDialog = false },
+            title = { Text("Disconnect Codex", fontWeight = FontWeight.Bold) },
+            text = {
+                Text("Are you sure you want to disconnect your ChatGPT account?")
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDisconnectDialog = false
+                    onCodexLogout()
+                }) {
+                    Text("Disconnect", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDisconnectDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = ExtendedTheme.colors.cardBackground),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "Codex Usage",
+                            color = CodexGreen,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "(beta)",
+                            color = ExtendedTheme.colors.textMuted,
+                            fontSize = 11.sp
+                        )
+                    }
+                    Text(
+                        text = "ChatGPT / Codex",
+                        color = ExtendedTheme.colors.textMuted,
+                        fontSize = 11.sp
+                    )
+                }
+                if (codexState is CodexUiState.Connected) {
+                    TextButton(onClick = { showDisconnectDialog = true }) {
+                        Text(
+                            text = "Disconnect",
+                            color = ExtendedTheme.colors.textMuted,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            when (codexState) {
+                is CodexUiState.NotConnected -> {
+                    OutlinedButton(
+                        onClick = onCodexLoginClick,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = CodexGreen
+                        ),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text(
+                            text = "Connect ChatGPT account",
+                            fontSize = 14.sp
+                        )
+                    }
+                }
+                is CodexUiState.Loading -> {
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            strokeWidth = 2.dp,
+                            color = CodexGreen
+                        )
+                    }
+                }
+                is CodexUiState.Connected -> {
+                    CodexUsageBar(data = codexState.data)
+                }
+                is CodexUiState.Error -> {
+                    Text(
+                        text = codexState.message,
+                        color = StatusCritical,
+                        fontSize = 12.sp
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = if (codexState.isAuthError) onCodexLoginClick else onCodexLoginClick,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = CodexGreen
+                        ),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text(
+                            text = if (codexState.isAuthError) "Reconnect" else "Retry",
+                            fontSize = 14.sp
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CodexUsageBar(data: CodexUsageData) {
+    val progressTrackColor = ExtendedTheme.colors.progressTrack
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        // Limit reached warning
+        if (data.limitReached) {
+            Text(
+                text = "Rate limit reached",
+                color = StatusCritical,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+        }
+
+        // Primary window (5h)
+        data.primaryWindow?.let { window ->
+            CodexWindowRow(
+                label = "5h window",
+                usedPercent = window.usedPercent,
+                resetAt = window.resetAt,
+                progressTrackColor = progressTrackColor
+            )
+        }
+
+        // Secondary window (weekly)
+        data.secondaryWindow?.let { window ->
+            if (data.primaryWindow != null) {
+                Spacer(modifier = Modifier.height(10.dp))
+            }
+            CodexWindowRow(
+                label = "Weekly",
+                usedPercent = window.usedPercent,
+                resetAt = window.resetAt,
+                progressTrackColor = progressTrackColor
+            )
+        }
+
+        // Plan type
+        if (data.planType != null) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Plan: ${data.planType}",
+                color = ExtendedTheme.colors.textMuted,
+                fontSize = 10.sp
+            )
+        }
+    }
+}
+
+@Composable
+private fun CodexWindowRow(
+    label: String,
+    usedPercent: Double,
+    resetAt: Instant?,
+    progressTrackColor: Color
+) {
+    val gradient = Brush.horizontalGradient(
+        colors = listOf(CodexGreen, CodexGreenLight)
+    )
+    val animatedProgress by animateFloatAsState(
+        targetValue = (usedPercent / 100.0).toFloat().coerceIn(0f, 1f),
+        animationSpec = tween(durationMillis = 800),
+        label = "codex_progress_$label"
+    )
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            color = ExtendedTheme.colors.textSecondary,
+            fontSize = 12.sp
+        )
+        Text(
+            text = "${String.format("%.1f", usedPercent)}%",
+            color = if (usedPercent >= 80) StatusCritical else CodexGreen,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold
+        )
+    }
+
+    Spacer(modifier = Modifier.height(4.dp))
+
+    // Progress bar
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(8.dp)
+            .clip(RoundedCornerShape(4.dp))
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val cr = CornerRadius(4.dp.toPx())
+            drawRoundRect(color = progressTrackColor, cornerRadius = cr)
+            if (animatedProgress > 0f) {
+                drawRoundRect(
+                    brush = gradient,
+                    size = Size(size.width * animatedProgress, size.height),
+                    cornerRadius = cr
+                )
+            }
+        }
+    }
+
+    // Reset time
+    if (resetAt != null) {
+        val remaining = Duration.between(Instant.now(), resetAt)
+        if (!remaining.isNegative) {
+            val totalSeconds = remaining.seconds
+            val days = totalSeconds / 86400
+            val h = (totalSeconds % 86400) / 3600
+            val m = (totalSeconds % 3600) / 60
+            val resetText = when {
+                days > 0 -> "Resets in ${days}d ${h}h"
+                h > 0 -> "Resets in ${h}h ${m}m"
+                m > 0 -> "Resets in ${m}m"
+                else -> "Resetting soon..."
+            }
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = resetText,
+                color = ExtendedTheme.colors.textMuted,
+                fontSize = 10.sp
+            )
         }
     }
 }
