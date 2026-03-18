@@ -5,14 +5,21 @@
     android:background="@drawable/widget_background"
     android:gravity="center"
     android:orientation="vertical"
-    android:padding="12dp">
+    android:padding="14dp">
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:text="\u26A1"
+        android:textSize="20sp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
         android:text="@string/app_name"
-        android:textColor="#E8E6F0"
-        android:textSize="14sp"
+        android:textColor="#FFFFFF"
+        android:textSize="15sp"
         android:textStyle="bold" />
 
     <TextView
