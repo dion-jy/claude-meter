@@ -143,6 +143,9 @@ class UsageViewModel(application: Application) : AndroidViewModel(application) {
             if (fetchMutex.isLocked) return@launch
             _isRefreshing.value = true
             fetchUsageData()
+            if (codexCredentialManager.hasCredentials()) {
+                fetchCodexUsageData()
+            }
             _isRefreshing.value = false
         }
     }
