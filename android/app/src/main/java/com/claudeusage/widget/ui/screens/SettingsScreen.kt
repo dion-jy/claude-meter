@@ -24,13 +24,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.claudeusage.widget.BuildConfig
 import com.claudeusage.widget.ui.components.BannerAd
 import com.claudeusage.widget.ui.theme.*
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 private const val DONATE_URL = "https://paypal.me/JunyeobBaek"
-private const val APP_VERSION = "1.3.0"
+private val APP_VERSION = BuildConfig.VERSION_NAME
 
 data class MetricToggle(
     val key: String,
