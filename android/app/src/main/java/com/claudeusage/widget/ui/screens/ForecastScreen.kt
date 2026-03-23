@@ -231,12 +231,17 @@ fun ForecastScreen(
                             strokeWidth = 1.dp.toPx()
                         )
 
-                        // Draw history polyline
+                        // Draw history polyline (break at gaps > 1 hour)
+                        val gapThresholdMs = 60 * 60 * 1000L // 1 hour
                         if (history.size >= 2) {
                             val sortedHistory = history.sortedBy { it.timestamp }
                             for (i in 0 until sortedHistory.size - 1) {
                                 val e1 = sortedHistory[i]
                                 val e2 = sortedHistory[i + 1]
+
+                                // Skip drawing line if there's a data gap
+                                if (e2.timestamp - e1.timestamp > gapThresholdMs) continue
+
                                 val x1 = leftPad + graphWidth * ((e1.timestamp - weekStartMs) / totalWeekMs).toFloat().coerceIn(0f, 1f)
                                 val y1 = topPad + graphHeight * (1 - (e1.utilization / 100.0).toFloat().coerceIn(0f, 1f))
                                 val x2 = leftPad + graphWidth * ((e2.timestamp - weekStartMs) / totalWeekMs).toFloat().coerceIn(0f, 1f)
