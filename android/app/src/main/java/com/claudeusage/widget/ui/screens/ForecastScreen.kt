@@ -232,7 +232,7 @@ fun ForecastScreen(
                         )
 
                         // Draw history polyline (break at gaps > 1 hour)
-                        val gapThresholdMs = 60 * 60 * 1000L // 1 hour
+                        val gapThresholdMs = 6 * 60 * 60 * 1000L // 6 hours
                         if (history.size >= 2) {
                             val sortedHistory = history.sortedBy { it.timestamp }
                             for (i in 0 until sortedHistory.size - 1) {
