@@ -1,5 +1,6 @@
 package com.claudeusage.widget.data.repository
 
+import android.util.Log
 import com.claudeusage.widget.data.model.Credentials
 import com.claudeusage.widget.data.model.ExtraUsageInfo
 import com.claudeusage.widget.data.model.UsageData
@@ -56,6 +57,7 @@ class UsageRepository {
                     val prepaidJson = prepaidDeferred.await()
 
                     val usageData = UsageData.fromJson(usageResult)
+                    Log.d("UsageRepository", "usage API keys: ${usageData.rawKeys}")
 
                     // Merge overage spending data
                     var extraMetric = usageData.extraUsage

@@ -444,6 +444,18 @@ private fun UsageContent(
             )
         }
 
+        // Debug: raw JSON keys from /usage API (used to verify new metrics like routine/design)
+        if (data.rawKeys.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "API keys: ${data.rawKeys.joinToString(", ")}",
+                color = ExtendedTheme.colors.textMuted,
+                fontSize = 10.sp,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center
+            )
+        }
+
         // Banner Ad
         Spacer(modifier = Modifier.height(16.dp))
         BannerAd(
