@@ -19,6 +19,7 @@ import androidx.glance.unit.ColorProvider
 import com.claudeusage.widget.MainActivity
 import com.claudeusage.widget.data.local.CredentialManager
 import com.claudeusage.widget.data.model.UsageData
+import com.claudeusage.widget.data.model.UsageMetric
 import com.claudeusage.widget.data.repository.UsageRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -47,11 +48,33 @@ class UsageAppWidget : GlanceAppWidget() {
     }
 }
 
-private val BgDark = ColorProvider(Color(0xFF0D0D0D))
+// -- Colors --
+private val BgDark = ColorProvider(Color(0xFF111118))
+private val BgCard = ColorProvider(Color(0xFF1C1C2E))
 private val BgTrack = ColorProvider(Color(0xFF2A2A40))
+private val TextWhite = ColorProvider(Color(0xFFFFFFFF))
 private val TextLight = ColorProvider(Color(0xFFE8E6F0))
 private val TextDim = ColorProvider(Color(0xFFA09BB0))
+private val TextMuted = ColorProvider(Color(0xFF6B6680))
+private val AccentPurple = ColorProvider(Color(0xFF8B6FDB))
 
+private fun getStatusColor(utilization: Double): Color {
+    return when {
+        utilization >= 90.0 -> Color(0xFFE85454)
+        utilization >= 75.0 -> Color(0xFFE8943A)
+        else -> Color(0xFF6B4FBB)
+    }
+}
+
+private fun getStatusEmoji(utilization: Double): String {
+    return when {
+        utilization >= 90.0 -> "\uD83D\uDD34"
+        utilization >= 75.0 -> "\uD83D\uDFE0"
+        else -> "\uD83D\uDFE2"
+    }
+}
+
+// -- Main Widget --
 @Composable
 private fun WidgetContent(usageData: UsageData?) {
     Box(
@@ -60,7 +83,7 @@ private fun WidgetContent(usageData: UsageData?) {
             .background(BgDark)
             .cornerRadius(16.dp)
             .clickable(actionStartActivity<MainActivity>())
-            .padding(12.dp)
+            .padding(14.dp)
     ) {
         if (usageData == null) {
             NoDataContent()
@@ -70,6 +93,7 @@ private fun WidgetContent(usageData: UsageData?) {
     }
 }
 
+// -- No Data State --
 @Composable
 private fun NoDataContent() {
     Column(
@@ -78,10 +102,15 @@ private fun NoDataContent() {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
+            text = "\u2728",
+            style = TextStyle(fontSize = 24.sp)
+        )
+        Spacer(modifier = GlanceModifier.height(8.dp))
+        Text(
             text = "Claude Meter",
             style = TextStyle(
-                color = TextLight,
-                fontSize = 14.sp,
+                color = TextWhite,
+                fontSize = 16.sp,
                 fontWeight = FontWeight.Bold
             )
         )
@@ -90,53 +119,64 @@ private fun NoDataContent() {
             text = "Tap to sign in",
             style = TextStyle(
                 color = TextDim,
-                fontSize = 12.sp
+                fontSize = 13.sp
             )
         )
     }
 }
 
+// -- Data Content --
 @Composable
 private fun UsageDataContent(data: UsageData) {
     Column(
         modifier = GlanceModifier.fillMaxSize()
     ) {
-        Text(
-            text = "Claude Meter",
-            style = TextStyle(
-                color = TextLight,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold
+        // Header
+        Row(
+            modifier = GlanceModifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "\u26A1 Claude Meter",
+                style = TextStyle(
+                    color = TextWhite,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold
+                )
             )
+            Spacer(modifier = GlanceModifier.defaultWeight())
+            val sessionUtil = data.fiveHour?.utilization ?: 0.0
+            Text(
+                text = getStatusEmoji(sessionUtil),
+                style = TextStyle(fontSize = 12.sp)
+            )
+        }
+
+        Spacer(modifier = GlanceModifier.height(10.dp))
+
+        // Session Card
+        UsageCard(
+            label = "Session (5h)",
+            metric = data.fiveHour
         )
 
-        Spacer(modifier = GlanceModifier.height(8.dp))
+        Spacer(modifier = GlanceModifier.height(6.dp))
 
-        WidgetUsageRow(
-            label = "Session",
-            utilization = data.fiveHour?.utilization ?: 0.0
+        // Weekly Card
+        UsageCard(
+            label = "Weekly (7d)",
+            metric = data.sevenDay
         )
-        Spacer(modifier = GlanceModifier.height(4.dp))
-        WidgetProgressBar(utilization = data.fiveHour?.utilization ?: 0.0)
-
-        Spacer(modifier = GlanceModifier.height(8.dp))
-
-        WidgetUsageRow(
-            label = "Weekly",
-            utilization = data.sevenDay?.utilization ?: 0.0
-        )
-        Spacer(modifier = GlanceModifier.height(4.dp))
-        WidgetProgressBar(utilization = data.sevenDay?.utilization ?: 0.0)
 
         // Coach message
         val coachMsg = getCoachMessage(data)
         if (coachMsg != null) {
-            Spacer(modifier = GlanceModifier.height(6.dp))
+            Spacer(modifier = GlanceModifier.height(8.dp))
             Text(
                 text = coachMsg,
                 style = TextStyle(
                     color = TextDim,
-                    fontSize = 10.sp
+                    fontSize = 11.sp
                 ),
                 maxLines = 1
             )
@@ -144,49 +184,111 @@ private fun UsageDataContent(data: UsageData) {
     }
 }
 
+// -- Usage Card --
 @Composable
-private fun WidgetUsageRow(label: String, utilization: Double) {
-    Row(
-        modifier = GlanceModifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = label,
-            style = TextStyle(
-                color = TextDim,
-                fontSize = 11.sp
-            )
-        )
-        Spacer(modifier = GlanceModifier.defaultWeight())
-        Text(
-            text = String.format("%.1f%%", utilization),
-            style = TextStyle(
-                color = ColorProvider(getStatusColor(utilization)),
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold
-            )
-        )
-    }
-}
-
-@Composable
-private fun WidgetProgressBar(utilization: Double) {
+private fun UsageCard(label: String, metric: UsageMetric?) {
+    val utilization = metric?.utilization ?: 0.0
     val statusColor = getStatusColor(utilization)
-    val alpha = (utilization / 100.0).toFloat().coerceIn(0.15f, 1f)
+
     Box(
         modifier = GlanceModifier
             .fillMaxWidth()
-            .height(6.dp)
-            .cornerRadius(3.dp)
+            .background(BgCard)
+            .cornerRadius(10.dp)
+            .padding(10.dp)
+    ) {
+        Column(modifier = GlanceModifier.fillMaxWidth()) {
+            // Top row: label + percentage
+            Row(
+                modifier = GlanceModifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = label,
+                    style = TextStyle(
+                        color = TextDim,
+                        fontSize = 11.sp
+                    )
+                )
+                Spacer(modifier = GlanceModifier.defaultWeight())
+                Text(
+                    text = String.format("%.0f%%", utilization),
+                    style = TextStyle(
+                        color = ColorProvider(statusColor),
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                )
+            }
+
+            Spacer(modifier = GlanceModifier.height(6.dp))
+
+            // Progress bar
+            WidgetProgressBar(utilization = utilization, statusColor = statusColor)
+
+            // Reset time
+            val remaining = metric?.remainingDuration
+            if (remaining != null && remaining > Duration.ZERO) {
+                Spacer(modifier = GlanceModifier.height(4.dp))
+                Text(
+                    text = "Resets in ${formatDuration(remaining)}",
+                    style = TextStyle(
+                        color = TextMuted,
+                        fontSize = 10.sp
+                    )
+                )
+            }
+        }
+    }
+}
+
+// -- Progress Bar (segmented approach for Glance weight support) --
+@Composable
+private fun WidgetProgressBar(utilization: Double, statusColor: Color) {
+    val totalSegments = 20
+    val filledSegments = ((utilization / 100.0) * totalSegments).toInt().coerceIn(0, totalSegments)
+    val emptySegments = totalSegments - filledSegments
+
+    Row(
+        modifier = GlanceModifier
+            .fillMaxWidth()
+            .height(8.dp)
+            .cornerRadius(4.dp)
             .background(BgTrack)
     ) {
-        Box(
-            modifier = GlanceModifier
-                .fillMaxWidth()
-                .height(6.dp)
-                .cornerRadius(3.dp)
-                .background(ColorProvider(statusColor.copy(alpha = alpha)))
-        ) {}
+        repeat(filledSegments) {
+            Spacer(
+                modifier = GlanceModifier
+                    .defaultWeight()
+                    .height(8.dp)
+                    .background(ColorProvider(statusColor))
+            )
+        }
+        repeat(emptySegments) {
+            Spacer(
+                modifier = GlanceModifier
+                    .defaultWeight()
+                    .height(8.dp)
+            )
+        }
+    }
+}
+
+// -- Helpers --
+private fun formatDuration(duration: Duration): String {
+    val totalMinutes = duration.toMinutes()
+    return when {
+        totalMinutes < 60 -> "${totalMinutes}m"
+        totalMinutes < 1440 -> {
+            val hours = totalMinutes / 60
+            val mins = totalMinutes % 60
+            if (mins > 0) "${hours}h ${mins}m" else "${hours}h"
+        }
+        else -> {
+            val days = totalMinutes / 1440
+            val hours = (totalMinutes % 1440) / 60
+            if (hours > 0) "${days}d ${hours}h" else "${days}d"
+        }
     }
 }
 
@@ -197,7 +299,7 @@ private fun getCoachMessage(data: UsageData): String? {
     val weeklyRemaining = data.sevenDay?.remainingDuration
 
     return when {
-        sessionUtil >= 100.0 -> "\u26A0 Session maxed — switch tasks!"
+        sessionUtil >= 100.0 -> "\u26A0\uFE0F Session maxed — switch tasks!"
         sessionUtil > 80.0 && sessionRemaining != null
             && sessionRemaining < Duration.ofMinutes(30) -> "\uD83D\uDCA1 Reset imminent — take a break"
         weeklyUtil > 70.0 && weeklyRemaining != null
@@ -205,13 +307,5 @@ private fun getCoachMessage(data: UsageData): String? {
         weeklyUtil < 50.0 && weeklyRemaining != null
             && weeklyRemaining > Duration.ofDays(3) -> "\uD83D\uDE80 Plenty of capacity!"
         else -> null
-    }
-}
-
-private fun getStatusColor(utilization: Double): Color {
-    return when {
-        utilization >= 90.0 -> Color(0xFFE85454)
-        utilization >= 75.0 -> Color(0xFFE8943A)
-        else -> Color(0xFF6B4FBB)
     }
 }

@@ -231,12 +231,15 @@ fun ForecastScreen(
                             strokeWidth = 1.dp.toPx()
                         )
 
-                        // Draw history polyline
+                        // Draw history polyline (only current week data)
                         if (history.size >= 2) {
-                            val sortedHistory = history.sortedBy { it.timestamp }
+                            val sortedHistory = history
+                                .filter { it.timestamp >= weekStartMs }
+                                .sortedBy { it.timestamp }
                             for (i in 0 until sortedHistory.size - 1) {
                                 val e1 = sortedHistory[i]
                                 val e2 = sortedHistory[i + 1]
+
                                 val x1 = leftPad + graphWidth * ((e1.timestamp - weekStartMs) / totalWeekMs).toFloat().coerceIn(0f, 1f)
                                 val y1 = topPad + graphHeight * (1 - (e1.utilization / 100.0).toFloat().coerceIn(0f, 1f))
                                 val x2 = leftPad + graphWidth * ((e2.timestamp - weekStartMs) / totalWeekMs).toFloat().coerceIn(0f, 1f)
