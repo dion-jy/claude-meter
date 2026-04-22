@@ -444,11 +444,15 @@ private fun UsageContent(
             )
         }
 
-        // Debug: raw JSON keys from /usage API (used to verify new metrics like routine/design)
+        // Debug: raw JSON keys + utilization from /usage API (used to map new codenames to products)
         if (data.rawKeys.isNotEmpty()) {
             Spacer(modifier = Modifier.height(8.dp))
+            val summary = data.rawKeys.joinToString(", ") { key ->
+                val util = data.rawUtilizations[key]
+                if (util != null) "$key=${String.format("%.1f", util)}%" else key
+            }
             Text(
-                text = "API keys: ${data.rawKeys.joinToString(", ")}",
+                text = "API: $summary",
                 color = ExtendedTheme.colors.textMuted,
                 fontSize = 10.sp,
                 modifier = Modifier.fillMaxWidth(),

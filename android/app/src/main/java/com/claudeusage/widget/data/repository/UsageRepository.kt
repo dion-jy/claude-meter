@@ -58,6 +58,7 @@ class UsageRepository {
 
                     val usageData = UsageData.fromJson(usageResult)
                     Log.d("UsageRepository", "usage API keys: ${usageData.rawKeys}")
+                    Log.d("UsageRepository", "usage utilizations: ${usageData.rawUtilizations}")
 
                     // Merge overage spending data
                     var extraMetric = usageData.extraUsage
