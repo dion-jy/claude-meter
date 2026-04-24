@@ -60,8 +60,14 @@ fun ForecastScreen(
     val elapsedDays = elapsedMs / (1000.0 * 60 * 60 * 24)
     val remainingDays = 7.0 - elapsedDays
 
-    // Burning rate calculation
-    val burningRatePerHour = if (elapsedDays > 0) weeklyUtil / (elapsedDays * 24) else 0.0
+    // Strip pre-reset entries that slipped past in-app detection (defense in depth
+    // for already-stored history from older app versions or missed transitions).
+    val sanitizedHistory = sanitizeHistory(history)
+
+    // Burning rate: prefer recent slope (last ~6h) over cumulative average so mid-week
+    // refunds don't collapse the forecast to ~0.
+    val burningRatePerHour = recentBurningRate(sanitizedHistory, nowMs = now.toEpochMilli())
+        ?: if (elapsedDays > 0) weeklyUtil / (elapsedDays * 24) else 0.0
     val remainingHours = remainingDays * 24
     val projectedTotal = weeklyUtil + burningRatePerHour * remainingHours
     val depletionHoursFromNow = if (burningRatePerHour > 0) {
@@ -232,8 +238,8 @@ fun ForecastScreen(
                         )
 
                         // Draw history polyline (only current week data)
-                        if (history.size >= 2) {
-                            val sortedHistory = history
+                        if (sanitizedHistory.size >= 2) {
+                            val sortedHistory = sanitizedHistory
                                 .filter { it.timestamp >= weekStartMs }
                                 .sortedBy { it.timestamp }
                             for (i in 0 until sortedHistory.size - 1) {
@@ -471,4 +477,45 @@ private fun formatDepletionTime(hours: Double): String {
         hours < 24 -> String.format("%.1fh", hours)
         else -> String.format("%.1fd", hours / 24)
     }
+}
+
+/**
+ * Drops entries preceding any large utilization drop (> 30pp down to < 5%) which is
+ * a strong signal of a weekly reset or credit refund. Keeps the chart starting fresh
+ * from the most recent such reset.
+ */
+private fun sanitizeHistory(history: List<UsageHistoryEntry>): List<UsageHistoryEntry> {
+    if (history.size < 2) return history
+    val sorted = history.sortedBy { it.timestamp }
+    var keepFrom = 0
+    for (i in 1 until sorted.size) {
+        val prev = sorted[i - 1].utilization
+        val curr = sorted[i].utilization
+        if (prev > 30.0 && curr < 5.0) keepFrom = i
+    }
+    return if (keepFrom > 0) sorted.subList(keepFrom, sorted.size) else sorted
+}
+
+/**
+ * Returns a burning rate (%/hour) derived from the slope between the oldest entry
+ * in the last ~6 hour window and the newest entry, or null if there isn't enough
+ * recent signal (so the caller can fall back to cumulative average).
+ */
+private fun recentBurningRate(
+    history: List<UsageHistoryEntry>,
+    nowMs: Long,
+    windowMs: Long = Duration.ofHours(6).toMillis()
+): Double? {
+    if (history.size < 2) return null
+    val recent = history
+        .sortedBy { it.timestamp }
+        .filter { it.timestamp >= nowMs - windowMs }
+    if (recent.size < 2) return null
+    val first = recent.first()
+    val last = recent.last()
+    val hours = (last.timestamp - first.timestamp) / (1000.0 * 60 * 60)
+    if (hours <= 0) return null
+    val delta = last.utilization - first.utilization
+    // Negative slopes (e.g. small refunds or rounding) shouldn't flip the projection.
+    return (delta / hours).coerceAtLeast(0.0)
 }

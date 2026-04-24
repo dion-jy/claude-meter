@@ -251,9 +251,13 @@ class UsageViewModel(application: Application) : AndroidViewModel(application) {
                 if (appPreferences.notificationEnabled) {
                     UsageNotificationService.forceUpdate(getApplication())
                 }
-                // Coach features (push notifications)
+                // Always handle weekly resets (even when coach is disabled)
+                // so the forecast history stays clean across mid-week refunds.
+                val weeklyResetDetected = handleWeeklyReset(data)
+                val sessionResetDetected = handleSessionReset(data)
+                // Coach-only push notifications
                 if (appPreferences.coachEnabled) {
-                    detectResets(data)
+                    notifyReset(weeklyResetDetected, sessionResetDetected, data)
                     val now = System.currentTimeMillis()
                     if (now - lastCoachEvalTime >= COACH_EVAL_INTERVAL_MS) {
                         evaluateCoachNotification(data)
@@ -367,31 +371,45 @@ class UsageViewModel(application: Application) : AndroidViewModel(application) {
         sendCoachPushNotification(title, message, COACH_ANALYSIS_ID)
     }
 
-    private fun detectResets(data: UsageData) {
-        // Session reset: previous utilization was significant, now dropped to near zero
-        val currentSessionUtil = data.fiveHour?.utilization ?: 0.0
-        val prevSession = prevSessionUtil
-        if (prevSession != null && prevSession > 30.0 && currentSessionUtil < 5.0) {
+    /**
+     * Detects a weekly reset by comparing the current utilization against both the
+     * in-memory previous value (covers same-session transitions) and the most recently
+     * stored history entry (covers cross-session transitions). When detected, the
+     * history store is purged so the forecast chart doesn't render the pre-reset cliff.
+     */
+    private fun handleWeeklyReset(data: UsageData): Boolean {
+        val currentWeeklyUtil = data.sevenDay?.utilization ?: return false
+        val prevWeekly = prevWeeklyUtil
+        val lastStored = historyStore.getHistory().lastOrNull()?.utilization
+        val droppedFromMemory = prevWeekly != null && prevWeekly > 30.0 && currentWeeklyUtil < 5.0
+        val droppedFromStore = lastStored != null && lastStored > 30.0 && currentWeeklyUtil < 5.0
+        if (!droppedFromMemory && !droppedFromStore) return false
+        historyStore.clearHistory()
+        _usageHistory.value = emptyList()
+        return true
+    }
+
+    private fun handleSessionReset(data: UsageData): Boolean {
+        val currentSessionUtil = data.fiveHour?.utilization ?: return false
+        val prevSession = prevSessionUtil ?: return false
+        return prevSession > 30.0 && currentSessionUtil < 5.0
+    }
+
+    private fun notifyReset(weekly: Boolean, session: Boolean, data: UsageData) {
+        if (session) {
             sendCoachPushNotification(
                 "Fully charged!",
                 "Session reset complete — start a new session now",
                 COACH_SESSION_RESET_ID
             )
         }
-
-        // Weekly reset: previous utilization was significant, now dropped to near zero
-        val currentWeeklyUtil = data.sevenDay?.utilization ?: 0.0
-        val prevWeekly = prevWeeklyUtil
-        if (prevWeekly != null && prevWeekly > 30.0 && currentWeeklyUtil < 5.0) {
+        if (weekly) {
             sendCoachPushNotification(
                 "Weekly reset!",
                 "Fresh weekly capacity — let's make this week count",
                 COACH_WEEKLY_RESET_ID
             )
-            historyStore.clearHistory()
-            _usageHistory.value = emptyList()
         }
-
         // Sonnet reset
         val currentSonnetUtil = data.sevenDaySonnet?.utilization ?: 0.0
         val prevSonnet = prevSonnetUtil
@@ -402,7 +420,6 @@ class UsageViewModel(application: Application) : AndroidViewModel(application) {
                 COACH_SONNET_RESET_ID
             )
         }
-
         // Opus reset
         val currentOpusUtil = data.sevenDayOpus?.utilization ?: 0.0
         val prevOpus = prevOpusUtil
