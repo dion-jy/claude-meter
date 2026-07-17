@@ -399,25 +399,25 @@ private fun UsageContent(
         )
 
         // Extra metrics (filtered by settings)
-        val filteredMetrics = data.extraMetrics.filter { (label, _) ->
-            when {
-                label.contains("Sonnet") -> "sonnet" in visibleMetrics
-                label.contains("Extra") -> "extra_usage" in visibleMetrics
+        val filteredMetrics = data.extraMetrics.filter { labeled ->
+            when (labeled.key) {
+                "seven_day_sonnet" -> "sonnet" in visibleMetrics
+                "extra_usage" -> "extra_usage" in visibleMetrics
                 else -> true
             }
         }
         if (filteredMetrics.isNotEmpty()) {
             Spacer(modifier = Modifier.height(16.dp))
-            filteredMetrics.forEach { (label, metric) ->
+            filteredMetrics.forEach { labeled ->
                 Spacer(modifier = Modifier.height(8.dp))
-                if (label == "Extra Usage") {
+                if (labeled.key == "extra_usage") {
                     MiniUsageCard(
-                        label = label,
-                        metric = metric,
+                        label = labeled.label,
+                        metric = labeled.metric,
                         extraUsageInfo = data.extraUsageInfo
                     )
                 } else {
-                    MiniUsageCard(label = label, metric = metric)
+                    MiniUsageCard(label = labeled.label, metric = labeled.metric)
                 }
             }
         }

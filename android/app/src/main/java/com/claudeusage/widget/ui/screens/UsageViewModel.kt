@@ -78,8 +78,7 @@ class UsageViewModel(application: Application) : AndroidViewModel(application) {
     private var isAppInForeground = false
     private var prevSessionUtil: Double? = null
     private var prevWeeklyUtil: Double? = null
-    private var prevSonnetUtil: Double? = null
-    private var prevOpusUtil: Double? = null
+    private var prevDynamicUtils: Map<String, Double> = emptyMap()
     private var lastCoachEvalTime: Long = 0L
 
     init {
@@ -264,8 +263,7 @@ class UsageViewModel(application: Application) : AndroidViewModel(application) {
                 // Update previous values for next comparison
                 prevSessionUtil = data.fiveHour?.utilization
                 prevWeeklyUtil = data.sevenDay?.utilization
-                prevSonnetUtil = data.sevenDaySonnet?.utilization
-                prevOpusUtil = data.sevenDayOpus?.utilization
+                prevDynamicUtils = data.dynamicMetrics.associate { it.key to it.metric.utilization }
             },
             onFailure = { error ->
                 val isAuth = error is AuthException
@@ -319,8 +317,10 @@ class UsageViewModel(application: Application) : AndroidViewModel(application) {
         val sessionRemaining = data.fiveHour?.remainingDuration
         val weeklyUtil = data.sevenDay?.utilization ?: 0.0
         val weeklyRemaining = data.sevenDay?.remainingDuration
-        val sonnetUtil = data.sevenDaySonnet?.utilization ?: 0.0
-        val opusUtil = data.sevenDayOpus?.utilization ?: 0.0
+        // Any per-model weekly limit above 80% (seven_day_sonnet, seven_day_fable, ...)
+        val hotModelMetric = data.dynamicMetrics.firstOrNull {
+            it.key.startsWith("seven_day_") && it.metric.utilization > 80.0
+        }
 
         val (title, message) = when {
             // Session maxed out
@@ -339,13 +339,11 @@ class UsageViewModel(application: Application) : AndroidViewModel(application) {
                 val timeStr = formatDuration(sessionRemaining)
                 "Session resets in $timeStr" to "Don't waste the remaining capacity!"
             }
-            // Sonnet > 80%
-            sonnetUtil > 80.0 -> {
-                "Sonnet at ${sonnetUtil.toInt()}%" to "Consider switching to other models"
-            }
-            // Opus > 80%
-            opusUtil > 80.0 -> {
-                "Opus at ${opusUtil.toInt()}%" to "Consider switching to other models"
+            // Per-model weekly limit > 80%
+            hotModelMetric != null -> {
+                val shortName = hotModelMetric.label.substringBefore(" (")
+                "$shortName at ${hotModelMetric.metric.utilization.toInt()}%" to
+                    "Consider switching to other models"
             }
             // Weekly > 70% & reset > 2 days
             weeklyUtil > 70.0 && weeklyRemaining != null
@@ -392,26 +390,19 @@ class UsageViewModel(application: Application) : AndroidViewModel(application) {
             _usageHistory.value = emptyList()
         }
 
-        // Sonnet reset
-        val currentSonnetUtil = data.sevenDaySonnet?.utilization ?: 0.0
-        val prevSonnet = prevSonnetUtil
-        if (prevSonnet != null && prevSonnet > 30.0 && currentSonnetUtil < 5.0) {
-            sendCoachPushNotification(
-                "Sonnet reset!",
-                "Sonnet weekly limit refreshed",
-                COACH_SONNET_RESET_ID
-            )
-        }
-
-        // Opus reset
-        val currentOpusUtil = data.sevenDayOpus?.utilization ?: 0.0
-        val prevOpus = prevOpusUtil
-        if (prevOpus != null && prevOpus > 30.0 && currentOpusUtil < 5.0) {
-            sendCoachPushNotification(
-                "Opus reset!",
-                "Opus weekly limit refreshed",
-                COACH_OPUS_RESET_ID
-            )
+        // Per-model resets (seven_day_sonnet, seven_day_fable, ...)
+        data.dynamicMetrics.forEach { labeled ->
+            if (!labeled.key.startsWith("seven_day_")) return@forEach
+            val prev = prevDynamicUtils[labeled.key] ?: return@forEach
+            if (prev > 30.0 && labeled.metric.utilization < 5.0) {
+                val shortName = labeled.label.substringBefore(" (")
+                sendCoachPushNotification(
+                    "$shortName reset!",
+                    "$shortName weekly limit refreshed",
+                    // Stable per-key notification ID so different limits don't overwrite each other
+                    COACH_MODEL_RESET_BASE_ID + (labeled.key.hashCode() and 0x3FF)
+                )
+            }
         }
     }
 
@@ -472,8 +463,8 @@ class UsageViewModel(application: Application) : AndroidViewModel(application) {
         private const val COACH_CHANNEL_ID = "coach_channel"
         private const val COACH_SESSION_RESET_ID = 2001
         private const val COACH_WEEKLY_RESET_ID = 2002
-        private const val COACH_SONNET_RESET_ID = 2003
-        private const val COACH_OPUS_RESET_ID = 2004
         private const val COACH_ANALYSIS_ID = 2010
+        // Per-model reset IDs occupy 3000..3000+0x3FF (keyed by metric key hash)
+        private const val COACH_MODEL_RESET_BASE_ID = 3000
     }
 }

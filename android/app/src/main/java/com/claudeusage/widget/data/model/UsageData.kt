@@ -50,42 +50,73 @@ data class ExtraUsageInfo(
     val balanceCents: Int? = null
 )
 
+data class LabeledMetric(
+    val key: String,
+    val label: String,
+    val metric: UsageMetric
+)
+
 data class UsageData(
     val fiveHour: UsageMetric?,
     val sevenDay: UsageMetric?,
-    val sevenDaySonnet: UsageMetric?,
-    val sevenDayOpus: UsageMetric?,
-    val sevenDayCowork: UsageMetric?,
-    val sevenDayOauthApps: UsageMetric?,
+    val dynamicMetrics: List<LabeledMetric> = emptyList(),
     val extraUsage: UsageMetric?,
     val extraUsageInfo: ExtraUsageInfo? = null,
     val fetchedAt: Instant = Instant.now(),
     val rawKeys: List<String> = emptyList()
 ) {
-    val extraMetrics: List<Pair<String, UsageMetric>>
-        get() {
-            return listOfNotNull(
-                sevenDaySonnet?.let { "Sonnet (7d)" to it },
-                sevenDayOpus?.let { "Opus (7d)" to it },
-                sevenDayCowork?.let { "Cowork (7d)" to it },
-                sevenDayOauthApps?.let { "OAuth Apps (7d)" to it },
-                extraUsage?.let { "Extra Usage" to it }
-            )
-        }
+    val extraMetrics: List<LabeledMetric>
+        get() = dynamicMetrics + listOfNotNull(
+            extraUsage?.let { LabeledMetric("extra_usage", "Extra Usage", it) }
+        )
 
     companion object {
+        // Keys with dedicated UI/fields; everything else is picked up dynamically
+        private val PINNED_KEYS = setOf("five_hour", "seven_day", "extra_usage")
+
         fun fromJson(json: JSONObject): UsageData {
             val keys = json.keys().asSequence().toList()
+            val dynamic = keys
+                .filter { it !in PINNED_KEYS }
+                .mapNotNull { key ->
+                    val obj = json.optJSONObject(key) ?: return@mapNotNull null
+                    if (!obj.has("utilization")) return@mapNotNull null
+                    UsageMetric.fromJson(obj)?.let { LabeledMetric(key, labelForKey(key), it) }
+                }
             return UsageData(
                 fiveHour = UsageMetric.fromJson(json.optJSONObject("five_hour")),
                 sevenDay = UsageMetric.fromJson(json.optJSONObject("seven_day")),
-                sevenDaySonnet = UsageMetric.fromJson(json.optJSONObject("seven_day_sonnet")),
-                sevenDayOpus = UsageMetric.fromJson(json.optJSONObject("seven_day_opus")),
-                sevenDayCowork = UsageMetric.fromJson(json.optJSONObject("seven_day_cowork")),
-                sevenDayOauthApps = UsageMetric.fromJson(json.optJSONObject("seven_day_oauth_apps")),
+                dynamicMetrics = dynamic,
                 extraUsage = UsageMetric.fromJson(json.optJSONObject("extra_usage")),
                 rawKeys = keys
             )
+        }
+
+        // Words that need casing other than simple capitalization
+        private val WORD_OVERRIDES = mapOf(
+            "oauth" to "OAuth",
+            "api" to "API",
+            "apps" to "Apps"
+        )
+
+        // "seven_day_fable" -> "Fable (7d)", "seven_day_oauth_apps" -> "OAuth Apps (7d)"
+        fun labelForKey(key: String): String {
+            var name = key
+            var suffix = ""
+            when {
+                name.startsWith("seven_day_") -> {
+                    name = name.removePrefix("seven_day_")
+                    suffix = " (7d)"
+                }
+                name.startsWith("five_hour_") -> {
+                    name = name.removePrefix("five_hour_")
+                    suffix = " (5h)"
+                }
+            }
+            val words = name.split('_').filter { it.isNotEmpty() }.joinToString(" ") { word ->
+                WORD_OVERRIDES[word] ?: word.replaceFirstChar { it.uppercase() }
+            }
+            return words + suffix
         }
     }
 }
