@@ -444,6 +444,21 @@ private fun UsageContent(
             )
         }
 
+        // Debug builds only: show exactly what the usage endpoint returned
+        if (com.claudeusage.widget.BuildConfig.DEBUG) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "server keys: ${data.rawKeys.joinToString()}\n" +
+                    "parsed: " + data.dynamicMetrics.joinToString {
+                        "${it.key}→${it.label}(${it.metric.utilization.toInt()}%)"
+                    }.ifEmpty { "(no per-model limits in response)" },
+                color = ExtendedTheme.colors.textMuted,
+                fontSize = 10.sp,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center
+            )
+        }
+
         // Banner Ad
         Spacer(modifier = Modifier.height(16.dp))
         BannerAd(
