@@ -14,7 +14,6 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
@@ -42,7 +41,7 @@ class MainActivity : ComponentActivity() {
     private var notificationEnabled by mutableStateOf(false)
     private var coachEnabled by mutableStateOf(true)
     private var themeMode by mutableStateOf(AppPreferences.THEME_DARK)
-    private val metricVisibility = mutableStateMapOf<String, Boolean>()
+    private var hiddenMetrics by mutableStateOf<Set<String>>(emptySet())
     private val interstitialAdManager = InterstitialAdManager()
 
     private val loginLauncher = registerForActivityResult(
@@ -90,9 +89,7 @@ class MainActivity : ComponentActivity() {
         themeMode = appPreferences.themeMode
 
         // Load metric visibility from preferences
-        metricVisibility["sonnet"] = appPreferences.showSonnet
-        metricVisibility["extra_usage"] = appPreferences.showExtraUsage
-        metricVisibility["codex_usage"] = appPreferences.showCodexUsage
+        hiddenMetrics = appPreferences.hiddenMetricKeys
 
         // Request notification permission on first launch (Android 13+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -128,9 +125,7 @@ class MainActivity : ComponentActivity() {
                             uiState = uiState,
                             isRefreshing = isRefreshing,
                             lastUpdated = lastUpdated,
-                            visibleMetrics = metricVisibility
-                                .filter { it.value }
-                                .keys,
+                            hiddenMetrics = hiddenMetrics,
                             codexState = codexState,
                             onRefresh = viewModel::refresh,
                             onLogout = {
@@ -155,11 +150,21 @@ class MainActivity : ComponentActivity() {
                     }
                     Screen.Settings -> {
                         BackHandler { currentScreen = Screen.Usage }
-                        val availableToggles = listOf(
-                            MetricToggle("sonnet", "Sonnet (7d)", metricVisibility["sonnet"] ?: true),
-                            MetricToggle("extra_usage", "Extra Usage", metricVisibility["extra_usage"] ?: true),
-                            MetricToggle("codex_usage", "Codex Usage", metricVisibility["codex_usage"] ?: true)
-                        )
+                        // One toggle per metric the server currently reports,
+                        // plus the app-level Codex toggle
+                        val usageData = (uiState as? UiState.Success)?.data
+                        val availableToggles = buildList {
+                            usageData?.extraMetrics?.forEach { labeled ->
+                                add(
+                                    MetricToggle(
+                                        labeled.key,
+                                        labeled.label,
+                                        labeled.key !in hiddenMetrics
+                                    )
+                                )
+                            }
+                            add(MetricToggle("codex_usage", "Codex Usage", "codex_usage" !in hiddenMetrics))
+                        }
 
                         SettingsScreen(
                             notificationEnabled = notificationEnabled,
@@ -259,11 +264,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleMetricToggle(key: String, enabled: Boolean) {
-        metricVisibility[key] = enabled
-        when (key) {
-            "sonnet" -> appPreferences.showSonnet = enabled
-            "extra_usage" -> appPreferences.showExtraUsage = enabled
-            "codex_usage" -> appPreferences.showCodexUsage = enabled
-        }
+        hiddenMetrics = if (enabled) hiddenMetrics - key else hiddenMetrics + key
+        appPreferences.hiddenMetricKeys = hiddenMetrics
     }
 }

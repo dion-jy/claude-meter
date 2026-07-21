@@ -56,6 +56,13 @@ class UsageRepository {
                     val prepaidJson = prepaidDeferred.await()
 
                     val usageData = UsageData.fromJson(usageResult)
+                    android.util.Log.d(
+                        TAG,
+                        "usage response keys=${usageData.rawKeys} parsed=" +
+                            usageData.dynamicMetrics.joinToString {
+                                "${it.key}→'${it.label}'(${it.metric.utilization}%)"
+                            }
+                    )
 
                     // Merge overage spending data
                     var extraMetric = usageData.extraUsage
@@ -195,6 +202,7 @@ class UsageRepository {
         }
 
     companion object {
+        private const val TAG = "UsageRepository"
         const val BASE_URL = "https://claude.ai"
         const val USER_AGENT =
             "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Mobile Safari/537.36"
