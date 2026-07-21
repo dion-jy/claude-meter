@@ -444,20 +444,17 @@ private fun UsageContent(
             )
         }
 
-        // Debug builds only: show exactly what the usage endpoint returned
-        if (com.claudeusage.widget.BuildConfig.DEBUG) {
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "server keys: ${data.rawKeys.joinToString()}\n" +
-                    "parsed: " + data.dynamicMetrics.joinToString {
-                        "${it.key}→${it.label}(${it.metric.utilization.toInt()}%)"
-                    }.ifEmpty { "(no per-model limits in response)" },
-                color = ExtendedTheme.colors.textMuted,
-                fontSize = 10.sp,
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Center
-            )
-        }
+        // TEMP diagnostic (all build variants): full usage-endpoint dump.
+        // Remove once the new per-model limit keys are confirmed.
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "parsed: " + data.dynamicMetrics.joinToString {
+                "${it.key}→${it.label}(${it.metric.utilization.toInt()}%)"
+            }.ifEmpty { "(none)" } + "\n\n" + data.rawSummary.joinToString("\n"),
+            color = ExtendedTheme.colors.textMuted,
+            fontSize = 9.sp,
+            modifier = Modifier.fillMaxWidth()
+        )
 
         // Banner Ad
         Spacer(modifier = Modifier.height(16.dp))

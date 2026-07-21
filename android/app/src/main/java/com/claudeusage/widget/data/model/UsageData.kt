@@ -63,7 +63,9 @@ data class UsageData(
     val extraUsage: UsageMetric?,
     val extraUsageInfo: ExtraUsageInfo? = null,
     val fetchedAt: Instant = Instant.now(),
-    val rawKeys: List<String> = emptyList()
+    val rawKeys: List<String> = emptyList(),
+    // TEMP diagnostic: "key = value" per response entry, values truncated
+    val rawSummary: List<String> = emptyList()
 ) {
     val extraMetrics: List<LabeledMetric>
         get() = dynamicMetrics + listOfNotNull(
@@ -83,20 +85,28 @@ data class UsageData(
                     if (!obj.has("utilization")) return@mapNotNull null
                     UsageMetric.fromJson(obj)?.let { LabeledMetric(key, labelForKey(key), it) }
                 }
+            val rawSummary = keys.map { key ->
+                val value = if (json.isNull(key)) "null" else json.opt(key).toString()
+                "$key = ${value.take(160)}"
+            }
             return UsageData(
                 fiveHour = UsageMetric.fromJson(json.optJSONObject("five_hour")),
                 sevenDay = UsageMetric.fromJson(json.optJSONObject("seven_day")),
                 dynamicMetrics = dynamic,
                 extraUsage = UsageMetric.fromJson(json.optJSONObject("extra_usage")),
-                rawKeys = keys
+                rawKeys = keys,
+                rawSummary = rawSummary
             )
         }
 
-        // Words that need casing other than simple capitalization
+        // Words that need casing other than simple capitalization, plus
+        // internal codenames the API uses for public model names
+        // (e.g. the web UI shows seven_day_omelette as the Fable limit)
         private val WORD_OVERRIDES = mapOf(
             "oauth" to "OAuth",
             "api" to "API",
-            "apps" to "Apps"
+            "apps" to "Apps",
+            "omelette" to "Fable"
         )
 
         // "seven_day_fable" -> "Fable (7d)", "seven_day_oauth_apps" -> "OAuth Apps (7d)"
