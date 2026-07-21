@@ -438,17 +438,6 @@ private fun UsageContent(
             )
         }
 
-        // TEMP diagnostic (all build variants): the v2 "limits" array only.
-        // Remove once the per-model limit entry shape is confirmed.
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = data.rawSummary.firstOrNull { it.startsWith("limits") }
-                ?: "(no limits key in response)",
-            color = ExtendedTheme.colors.textMuted,
-            fontSize = 12.sp,
-            modifier = Modifier.fillMaxWidth()
-        )
-
         // Banner Ad
         Spacer(modifier = Modifier.height(16.dp))
         BannerAd(

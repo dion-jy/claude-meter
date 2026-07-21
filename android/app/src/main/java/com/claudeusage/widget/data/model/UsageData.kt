@@ -63,9 +63,7 @@ data class UsageData(
     val extraUsage: UsageMetric?,
     val extraUsageInfo: ExtraUsageInfo? = null,
     val fetchedAt: Instant = Instant.now(),
-    val rawKeys: List<String> = emptyList(),
-    // TEMP diagnostic: "key = value" per response entry, values truncated
-    val rawSummary: List<String> = emptyList()
+    val rawKeys: List<String> = emptyList()
 ) {
     val extraMetrics: List<LabeledMetric>
         get() = dynamicMetrics + listOfNotNull(
@@ -85,27 +83,12 @@ data class UsageData(
                     if (!obj.has("utilization")) return@mapNotNull null
                     UsageMetric.fromJson(obj)?.let { LabeledMetric(key, labelForKey(key), it) }
                 }
-            val rawSummary = keys.map { key ->
-                val value = if (json.isNull(key)) "null" else json.opt(key).toString()
-                // limits/spend hold the v2 consolidated structure — keep them
-                // whole and pretty-printed
-                val shown = when {
-                    json.isNull(key) -> "null"
-                    key == "limits" ->
-                        runCatching { json.optJSONArray(key)?.toString(2) }.getOrNull() ?: value
-                    key == "spend" ->
-                        runCatching { json.optJSONObject(key)?.toString(2) }.getOrNull() ?: value
-                    else -> value.take(160)
-                }
-                "$key = $shown"
-            }
             return UsageData(
                 fiveHour = UsageMetric.fromJson(json.optJSONObject("five_hour")),
                 sevenDay = UsageMetric.fromJson(json.optJSONObject("seven_day")),
                 dynamicMetrics = (dynamic + limitsMetrics(json)).distinctBy { it.label },
                 extraUsage = UsageMetric.fromJson(json.optJSONObject("extra_usage")),
-                rawKeys = keys,
-                rawSummary = rawSummary
+                rawKeys = keys
             )
         }
 
