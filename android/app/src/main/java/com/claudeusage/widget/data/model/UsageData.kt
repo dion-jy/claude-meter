@@ -87,8 +87,16 @@ data class UsageData(
                 }
             val rawSummary = keys.map { key ->
                 val value = if (json.isNull(key)) "null" else json.opt(key).toString()
-                // limits/spend hold the v2 consolidated structure — keep them whole
-                val shown = if (key == "limits" || key == "spend") value else value.take(160)
+                // limits/spend hold the v2 consolidated structure — keep them
+                // whole and pretty-printed
+                val shown = when {
+                    json.isNull(key) -> "null"
+                    key == "limits" ->
+                        runCatching { json.optJSONArray(key)?.toString(2) }.getOrNull() ?: value
+                    key == "spend" ->
+                        runCatching { json.optJSONObject(key)?.toString(2) }.getOrNull() ?: value
+                    else -> value.take(160)
+                }
                 "$key = $shown"
             }
             return UsageData(

@@ -438,15 +438,14 @@ private fun UsageContent(
             )
         }
 
-        // TEMP diagnostic (all build variants): full usage-endpoint dump.
-        // Remove once the new per-model limit keys are confirmed.
+        // TEMP diagnostic (all build variants): the v2 "limits" array only.
+        // Remove once the per-model limit entry shape is confirmed.
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "parsed: " + data.dynamicMetrics.joinToString {
-                "${it.key}→${it.label}(${it.metric.utilization.toInt()}%)"
-            }.ifEmpty { "(none)" } + "\n\n" + data.rawSummary.joinToString("\n"),
+            text = data.rawSummary.firstOrNull { it.startsWith("limits") }
+                ?: "(no limits key in response)",
             color = ExtendedTheme.colors.textMuted,
-            fontSize = 9.sp,
+            fontSize = 12.sp,
             modifier = Modifier.fillMaxWidth()
         )
 
