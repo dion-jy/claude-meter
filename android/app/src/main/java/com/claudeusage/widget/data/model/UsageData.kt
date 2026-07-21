@@ -87,16 +87,69 @@ data class UsageData(
                 }
             val rawSummary = keys.map { key ->
                 val value = if (json.isNull(key)) "null" else json.opt(key).toString()
-                "$key = ${value.take(160)}"
+                // limits/spend hold the v2 consolidated structure — keep them whole
+                val shown = if (key == "limits" || key == "spend") value else value.take(160)
+                "$key = $shown"
             }
             return UsageData(
                 fiveHour = UsageMetric.fromJson(json.optJSONObject("five_hour")),
                 sevenDay = UsageMetric.fromJson(json.optJSONObject("seven_day")),
-                dynamicMetrics = dynamic,
+                dynamicMetrics = (dynamic + limitsMetrics(json)).distinctBy { it.label },
                 extraUsage = UsageMetric.fromJson(json.optJSONObject("extra_usage")),
                 rawKeys = keys,
                 rawSummary = rawSummary
             )
+        }
+
+        /**
+         * Parses the v2 "limits" array — one entry per limit window, e.g.
+         * {"kind":"session","group":"session","percent":64,"resets_at":...,
+         *  "scope":null,"is_active":true}
+         * Unscoped session/weekly entries duplicate the five_hour/seven_day
+         * cards and are skipped; everything else (per-model scopes such as
+         * the Fable limit) becomes a metric.
+         */
+        private fun limitsMetrics(json: JSONObject): List<LabeledMetric> {
+            val array = json.optJSONArray("limits") ?: return emptyList()
+            val result = mutableListOf<LabeledMetric>()
+            for (i in 0 until array.length()) {
+                val entry = array.optJSONObject(i) ?: continue
+                val percent = entry.optDouble("percent", Double.NaN)
+                if (percent.isNaN()) continue
+                if (entry.has("is_active") && !entry.optBoolean("is_active", true)) continue
+                val kind = entry.optString("kind", "")
+                val scope = entry.optString("scope", "")
+                    .takeIf { it.isNotEmpty() && it != "null" }
+                if (scope == null && (kind == "session" || kind == "weekly")) continue
+                val name = scope ?: kind
+                if (name.isEmpty()) continue
+                val suffix = when {
+                    kind.contains("session") -> " (5h)"
+                    kind.contains("week") || kind.contains("seven_day") -> " (7d)"
+                    else -> ""
+                }
+                val base = labelForKey(name)
+                val label = if (base.endsWith(")")) base else base + suffix
+                result += LabeledMetric(
+                    key = "limits_$name",
+                    label = label,
+                    metric = UsageMetric(percent, parseInstant(entry.optString("resets_at", "")))
+                )
+            }
+            return result
+        }
+
+        private fun parseInstant(value: String): Instant? {
+            if (value.isEmpty()) return null
+            return try {
+                Instant.parse(value)
+            } catch (e: Exception) {
+                try {
+                    java.time.OffsetDateTime.parse(value).toInstant()
+                } catch (e2: Exception) {
+                    null
+                }
+            }
         }
 
         // Words that need casing other than simple capitalization, plus
