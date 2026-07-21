@@ -46,7 +46,7 @@ fun UsageScreen(
     uiState: UiState,
     isRefreshing: Boolean,
     lastUpdated: String?,
-    visibleMetrics: Set<String>,
+    hiddenMetrics: Set<String>,
     codexState: CodexUiState = CodexUiState.NotConnected,
     onRefresh: () -> Unit,
     onLogout: () -> Unit,
@@ -154,7 +154,7 @@ fun UsageScreen(
                 is UiState.Success -> UsageContent(
                     data = uiState.data,
                     lastUpdated = lastUpdated,
-                    visibleMetrics = visibleMetrics,
+                    hiddenMetrics = hiddenMetrics,
                     codexState = codexState,
                     onCodexLoginClick = onCodexLoginClick,
                     onCodexLogout = onCodexLogout
@@ -367,7 +367,7 @@ private fun LoginContent(
 private fun UsageContent(
     data: UsageData,
     lastUpdated: String?,
-    visibleMetrics: Set<String>,
+    hiddenMetrics: Set<String>,
     codexState: CodexUiState = CodexUiState.NotConnected,
     onCodexLoginClick: () -> Unit = {},
     onCodexLogout: () -> Unit = {}
@@ -399,13 +399,7 @@ private fun UsageContent(
         )
 
         // Extra metrics (filtered by settings)
-        val filteredMetrics = data.extraMetrics.filter { labeled ->
-            when (labeled.key) {
-                "seven_day_sonnet" -> "sonnet" in visibleMetrics
-                "extra_usage" -> "extra_usage" in visibleMetrics
-                else -> true
-            }
-        }
+        val filteredMetrics = data.extraMetrics.filter { it.key !in hiddenMetrics }
         if (filteredMetrics.isNotEmpty()) {
             Spacer(modifier = Modifier.height(16.dp))
             filteredMetrics.forEach { labeled ->
@@ -423,7 +417,7 @@ private fun UsageContent(
         }
 
         // Codex usage section (toggled by settings)
-        if ("codex_usage" in visibleMetrics) {
+        if ("codex_usage" !in hiddenMetrics) {
             Spacer(modifier = Modifier.height(20.dp))
             CodexSection(
                 codexState = codexState,
