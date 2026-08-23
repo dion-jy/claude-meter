@@ -2,6 +2,8 @@
 
 **Last updated: August 23, 2026**
 
+> 한국어 버전은 [PRIVACY_POLICY.ko.md](PRIVACY_POLICY.ko.md)를 참고하세요.
+
 ## Overview
 
 ClaudeMeter ("the App") is an open-source Android utility that displays your Claude.ai (and optionally ChatGPT/Codex) usage information in real-time. This policy explains how the App handles your data.
