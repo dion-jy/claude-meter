@@ -96,35 +96,45 @@ fun PrivacyPolicyScreen(onBack: () -> Unit) {
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 20.dp, vertical = 8.dp)
             ) {
-                PolicyLastUpdated("Last updated: February 8, 2026")
+                PolicyLastUpdated("Last updated: August 23, 2026")
 
                 PolicySectionTitle("Overview")
-                PolicyBody("Claude Meter (\"the App\") is an Android utility that displays your Claude.ai usage information in real-time. This policy explains how the App handles your data.")
+                PolicyBody("Claude Meter (\"the App\") is an Android utility that displays your Claude.ai (and optionally ChatGPT/Codex) usage information in real-time. This policy explains how the App handles your data.")
 
                 PolicySectionTitle("Data Collection")
-                PolicyBody("The App does not collect, store, or transmit any personal data to third-party servers.")
+                PolicyBody("The App itself does not collect, store, or transmit any personal data to servers operated by the developer. However, the App includes the Google AdMob advertising SDK, which collects certain identifiers as described in the Advertising section below.")
 
                 PolicySubTitle("What the App stores locally on your device:")
-                PolicyBullet("Session key — Used to authenticate with Claude.ai API. Stored in Android SharedPreferences (device-only).")
+                PolicyBullet("Claude session key — Used to authenticate with the Claude.ai API. Stored in encrypted storage (device-only).")
+                PolicyBullet("ChatGPT credentials (optional) — If you connect Codex usage tracking, the access token and session cookies are stored in encrypted storage on your device only.")
                 PolicyBullet("Organization ID — Used to fetch your usage data. Stored locally.")
                 PolicyBullet("Display preferences — Your metric visibility and notification settings.")
+                PolicyBullet("Usage history — Recent usage snapshots kept locally for the forecast feature.")
 
                 PolicySubTitle("What the App does NOT do:")
                 PolicyBullet("Does not collect analytics or telemetry")
-                PolicyBullet("Does not use tracking SDKs")
-                PolicyBullet("Does not share data with third parties")
-                PolicyBullet("Does not store your usage data permanently — it is fetched on demand and displayed in real-time")
+                PolicyBullet("Does not share your Claude/ChatGPT credentials or usage data with third parties")
+                PolicyBullet("Does not send your data to any server operated by the developer")
+
+                PolicySectionTitle("Advertising (Google AdMob)")
+                PolicyBody("The App displays ads (banner and interstitial) served by Google AdMob. To serve and measure ads, the Google Mobile Ads SDK may automatically collect and share with Google:")
+                PolicyBullet("Device or other IDs — the Android Advertising ID")
+                PolicyBullet("IP address and coarse location derived from it")
+                PolicyBullet("Ad interaction data (impressions, clicks) and diagnostic information")
+                PolicyBody("This data is collected by Google, not by the developer, and is used for advertising, ad measurement, and fraud prevention. See Google's Privacy Policy (policies.google.com/privacy) for details. You can limit ad personalization or delete/reset your Advertising ID at any time in your device settings under Settings > Google > Ads.")
 
                 PolicySectionTitle("Network Requests")
-                PolicyBody("The App communicates only with claude.ai to fetch your current usage metrics, spending limit info, and prepaid balance. No other network requests are made.")
+                PolicyBullet("claude.ai — to fetch your usage metrics, spending limit info, and prepaid balance")
+                PolicyBullet("chatgpt.com (only if you enable Codex tracking) — to authenticate and fetch your Codex usage data")
+                PolicyBullet("Google ad servers — to load and display AdMob ads")
+                PolicyBody("No other network requests are made.")
 
                 PolicySectionTitle("Data Security")
-                PolicyBullet("Your session key is stored locally on your device only")
+                PolicyBullet("Your session key and tokens are stored only on your device, in encrypted storage")
                 PolicyBullet("All network communication uses HTTPS")
-                PolicyBullet("No data is sent to any server other than claude.ai")
 
                 PolicySectionTitle("Third-Party Services")
-                PolicyBody("This App is not affiliated with, endorsed by, or officially connected to Anthropic in any way. It uses the same API endpoints that the Claude.ai web interface uses.")
+                PolicyBody("Google AdMob is used to display ads, as described above. This App is not affiliated with, endorsed by, or officially connected to Anthropic or OpenAI in any way. It uses the same API endpoints that the Claude.ai and ChatGPT web interfaces use.")
 
                 PolicySectionTitle("Children's Privacy")
                 PolicyBody("This App is not intended for use by children under 13.")
