@@ -121,32 +121,65 @@ class LoginActivity : ComponentActivity() {
     companion object {
         const val EXTRA_SESSION_KEY = "session_key"
 
-        // JS to hide Google OAuth button and 'or' divider
-        internal const val HIDE_GOOGLE_BUTTON_JS = """
+        // JS to hide social OAuth buttons (Google, Apple) and the 'or' divider.
+        // Neither provider works reliably inside a WebView, so only email
+        // login is offered. claude.ai is a SPA: the login form is rendered by
+        // React after onPageFinished fires, so a one-shot scan runs too early
+        // and misses the buttons. Install a persistent MutationObserver that
+        // re-applies the hiding on every DOM change instead.
+        internal const val HIDE_SSO_BUTTONS_JS = """
             (function() {
-                var style = document.createElement('style');
-                style.textContent = `
-                    button[data-testid="google-auth-button"],
-                    a[href*="accounts.google.com"],
-                    button:has(img[alt*="Google"]),
-                    button:has(svg) ~ button:has(svg) {
-                        display: none !important;
-                    }
-                `;
-                document.head.appendChild(style);
+                if (window.__cmHideSsoInstalled) return;
+                window.__cmHideSsoInstalled = true;
 
-                var allElements = document.querySelectorAll('*');
-                allElements.forEach(function(el) {
-                    var text = (el.textContent || '').trim().toLowerCase();
-                    if (text === 'or') {
-                        el.style.display = 'none';
+                var style = document.createElement('style');
+                style.textContent =
+                    'button[data-testid="google-auth-button"],' +
+                    'button[data-testid="apple-auth-button"],' +
+                    'a[href*="accounts.google.com"],' +
+                    'a[href*="appleid.apple.com"]' +
+                    '{ display: none !important; }';
+                (document.head || document.documentElement).appendChild(style);
+
+                function hideEl(el) {
+                    if (el && el.style.display !== 'none') {
+                        el.style.setProperty('display', 'none', 'important');
                     }
-                    if (text.includes('google')) {
-                        if (el.tagName === 'BUTTON' || el.tagName === 'A' || el.closest('button')) {
-                            (el.closest('button') || el).style.display = 'none';
+                }
+
+                function hideSsoButtons() {
+                    var els = document.querySelectorAll('button, a, [role="button"]');
+                    for (var i = 0; i < els.length; i++) {
+                        var el = els[i];
+                        var label = (el.textContent || '') + ' ' +
+                                    (el.getAttribute('aria-label') || '');
+                        var icon = el.querySelector('img[alt], svg[aria-label]');
+                        if (icon) {
+                            label += ' ' + (icon.getAttribute('alt') || '') + ' ' +
+                                     (icon.getAttribute('aria-label') || '');
+                        }
+                        label = label.toLowerCase();
+                        if (label.indexOf('google') !== -1 ||
+                            label.indexOf('apple') !== -1) {
+                            hideEl(el);
                         }
                     }
-                });
+                    var all = document.querySelectorAll('*');
+                    for (var j = 0; j < all.length; j++) {
+                        var t = (all[j].textContent || '').trim().toLowerCase();
+                        if ((t === 'or' || t === '또는') && all[j].children.length === 0) {
+                            hideEl(all[j]);
+                        }
+                    }
+                }
+
+                hideSsoButtons();
+                try {
+                    new MutationObserver(hideSsoButtons).observe(
+                        document.documentElement,
+                        { childList: true, subtree: true }
+                    );
+                } catch (e) {}
             })();
         """
     }
@@ -270,15 +303,26 @@ private fun LoginWebViewScreen(
                                     view: WebView?,
                                     request: WebResourceRequest?
                                 ): Boolean {
+                                    // Google/Apple OAuth dead-end in a WebView (Google
+                                    // shows a "disallowed_useragent" blank page), so
+                                    // block the navigation even if a hidden button
+                                    // gets tapped.
+                                    val host = request?.url?.host
+                                    if (request?.isForMainFrame == true &&
+                                        (host == "accounts.google.com" ||
+                                            host == "appleid.apple.com")
+                                    ) {
+                                        return true
+                                    }
                                     return false
                                 }
 
                                 override fun onPageFinished(view: WebView?, url: String?) {
                                     isLoading = false
 
-                                    // Hide Google login button via JS
+                                    // Hide social login buttons via JS
                                     view?.evaluateJavascript(
-                                        LoginActivity.HIDE_GOOGLE_BUTTON_JS,
+                                        LoginActivity.HIDE_SSO_BUTTONS_JS,
                                         null
                                     )
 
