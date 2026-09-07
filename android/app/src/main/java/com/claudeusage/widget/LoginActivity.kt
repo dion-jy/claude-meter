@@ -121,20 +121,23 @@ class LoginActivity : ComponentActivity() {
     companion object {
         const val EXTRA_SESSION_KEY = "session_key"
 
-        // JS to hide Google OAuth button and 'or' divider.
-        // claude.ai is a SPA: the login form is rendered by React after
-        // onPageFinished fires, so a one-shot scan runs too early and misses
-        // the button. Install a persistent MutationObserver that re-applies
-        // the hiding on every DOM change instead.
-        internal const val HIDE_GOOGLE_BUTTON_JS = """
+        // JS to hide social OAuth buttons (Google, Apple) and the 'or' divider.
+        // Neither provider works reliably inside a WebView, so only email
+        // login is offered. claude.ai is a SPA: the login form is rendered by
+        // React after onPageFinished fires, so a one-shot scan runs too early
+        // and misses the buttons. Install a persistent MutationObserver that
+        // re-applies the hiding on every DOM change instead.
+        internal const val HIDE_SSO_BUTTONS_JS = """
             (function() {
-                if (window.__cmHideGoogleInstalled) return;
-                window.__cmHideGoogleInstalled = true;
+                if (window.__cmHideSsoInstalled) return;
+                window.__cmHideSsoInstalled = true;
 
                 var style = document.createElement('style');
                 style.textContent =
                     'button[data-testid="google-auth-button"],' +
-                    'a[href*="accounts.google.com"]' +
+                    'button[data-testid="apple-auth-button"],' +
+                    'a[href*="accounts.google.com"],' +
+                    'a[href*="appleid.apple.com"]' +
                     '{ display: none !important; }';
                 (document.head || document.documentElement).appendChild(style);
 
@@ -144,7 +147,7 @@ class LoginActivity : ComponentActivity() {
                     }
                 }
 
-                function hideGoogle() {
+                function hideSsoButtons() {
                     var els = document.querySelectorAll('button, a, [role="button"]');
                     for (var i = 0; i < els.length; i++) {
                         var el = els[i];
@@ -155,7 +158,9 @@ class LoginActivity : ComponentActivity() {
                             label += ' ' + (icon.getAttribute('alt') || '') + ' ' +
                                      (icon.getAttribute('aria-label') || '');
                         }
-                        if (label.toLowerCase().indexOf('google') !== -1) {
+                        label = label.toLowerCase();
+                        if (label.indexOf('google') !== -1 ||
+                            label.indexOf('apple') !== -1) {
                             hideEl(el);
                         }
                     }
@@ -168,9 +173,9 @@ class LoginActivity : ComponentActivity() {
                     }
                 }
 
-                hideGoogle();
+                hideSsoButtons();
                 try {
-                    new MutationObserver(hideGoogle).observe(
+                    new MutationObserver(hideSsoButtons).observe(
                         document.documentElement,
                         { childList: true, subtree: true }
                     );
@@ -298,11 +303,14 @@ private fun LoginWebViewScreen(
                                     view: WebView?,
                                     request: WebResourceRequest?
                                 ): Boolean {
-                                    // Google OAuth dead-ends in a WebView
-                                    // ("disallowed_useragent" blank page), so block the
-                                    // navigation even if the hidden button gets tapped.
+                                    // Google/Apple OAuth dead-end in a WebView (Google
+                                    // shows a "disallowed_useragent" blank page), so
+                                    // block the navigation even if a hidden button
+                                    // gets tapped.
+                                    val host = request?.url?.host
                                     if (request?.isForMainFrame == true &&
-                                        request.url?.host == "accounts.google.com"
+                                        (host == "accounts.google.com" ||
+                                            host == "appleid.apple.com")
                                     ) {
                                         return true
                                     }
@@ -312,9 +320,9 @@ private fun LoginWebViewScreen(
                                 override fun onPageFinished(view: WebView?, url: String?) {
                                     isLoading = false
 
-                                    // Hide Google login button via JS
+                                    // Hide social login buttons via JS
                                     view?.evaluateJavascript(
-                                        LoginActivity.HIDE_GOOGLE_BUTTON_JS,
+                                        LoginActivity.HIDE_SSO_BUTTONS_JS,
                                         null
                                     )
 
