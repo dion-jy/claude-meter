@@ -121,32 +121,60 @@ class LoginActivity : ComponentActivity() {
     companion object {
         const val EXTRA_SESSION_KEY = "session_key"
 
-        // JS to hide Google OAuth button and 'or' divider
+        // JS to hide Google OAuth button and 'or' divider.
+        // claude.ai is a SPA: the login form is rendered by React after
+        // onPageFinished fires, so a one-shot scan runs too early and misses
+        // the button. Install a persistent MutationObserver that re-applies
+        // the hiding on every DOM change instead.
         internal const val HIDE_GOOGLE_BUTTON_JS = """
             (function() {
-                var style = document.createElement('style');
-                style.textContent = `
-                    button[data-testid="google-auth-button"],
-                    a[href*="accounts.google.com"],
-                    button:has(img[alt*="Google"]),
-                    button:has(svg) ~ button:has(svg) {
-                        display: none !important;
-                    }
-                `;
-                document.head.appendChild(style);
+                if (window.__cmHideGoogleInstalled) return;
+                window.__cmHideGoogleInstalled = true;
 
-                var allElements = document.querySelectorAll('*');
-                allElements.forEach(function(el) {
-                    var text = (el.textContent || '').trim().toLowerCase();
-                    if (text === 'or') {
-                        el.style.display = 'none';
+                var style = document.createElement('style');
+                style.textContent =
+                    'button[data-testid="google-auth-button"],' +
+                    'a[href*="accounts.google.com"]' +
+                    '{ display: none !important; }';
+                (document.head || document.documentElement).appendChild(style);
+
+                function hideEl(el) {
+                    if (el && el.style.display !== 'none') {
+                        el.style.setProperty('display', 'none', 'important');
                     }
-                    if (text.includes('google')) {
-                        if (el.tagName === 'BUTTON' || el.tagName === 'A' || el.closest('button')) {
-                            (el.closest('button') || el).style.display = 'none';
+                }
+
+                function hideGoogle() {
+                    var els = document.querySelectorAll('button, a, [role="button"]');
+                    for (var i = 0; i < els.length; i++) {
+                        var el = els[i];
+                        var label = (el.textContent || '') + ' ' +
+                                    (el.getAttribute('aria-label') || '');
+                        var icon = el.querySelector('img[alt], svg[aria-label]');
+                        if (icon) {
+                            label += ' ' + (icon.getAttribute('alt') || '') + ' ' +
+                                     (icon.getAttribute('aria-label') || '');
+                        }
+                        if (label.toLowerCase().indexOf('google') !== -1) {
+                            hideEl(el);
                         }
                     }
-                });
+                    var all = document.querySelectorAll('*');
+                    for (var j = 0; j < all.length; j++) {
+                        var t = (all[j].textContent || '').trim().toLowerCase();
+                        if ((t === 'or' || t === '또는') && all[j].children.length === 0) {
+                            hideEl(all[j]);
+                        }
+                    }
+                }
+
+                hideGoogle();
+                try {
+                    new MutationObserver(hideGoogle).observe(
+                        document.documentElement,
+                        { childList: true, subtree: true }
+                    );
+                } catch (e) {}
             })();
         """
     }
@@ -270,6 +298,14 @@ private fun LoginWebViewScreen(
                                     view: WebView?,
                                     request: WebResourceRequest?
                                 ): Boolean {
+                                    // Google OAuth dead-ends in a WebView
+                                    // ("disallowed_useragent" blank page), so block the
+                                    // navigation even if the hidden button gets tapped.
+                                    if (request?.isForMainFrame == true &&
+                                        request.url?.host == "accounts.google.com"
+                                    ) {
+                                        return true
+                                    }
                                     return false
                                 }
 
