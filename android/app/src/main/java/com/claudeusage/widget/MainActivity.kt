@@ -20,6 +20,7 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.claudeusage.widget.data.local.AppPreferences
 import com.claudeusage.widget.service.UsageNotificationService
 import com.claudeusage.widget.service.UsageUpdateScheduler
+import com.claudeusage.widget.ui.screens.CodexUiState
 import com.claudeusage.widget.ui.screens.ForecastScreen
 import com.claudeusage.widget.ui.screens.MetricToggle
 import com.claudeusage.widget.ui.screens.SettingsScreen
@@ -42,6 +43,7 @@ class MainActivity : ComponentActivity() {
     private var coachEnabled by mutableStateOf(true)
     private var themeMode by mutableStateOf(AppPreferences.THEME_DARK)
     private var hiddenMetrics by mutableStateOf<Set<String>>(emptySet())
+    private var hiddenGraphSeries by mutableStateOf<Set<String>>(emptySet())
     private val interstitialAdManager = InterstitialAdManager()
 
     private val loginLauncher = registerForActivityResult(
@@ -90,6 +92,7 @@ class MainActivity : ComponentActivity() {
 
         // Load metric visibility from preferences
         hiddenMetrics = appPreferences.hiddenMetricKeys
+        hiddenGraphSeries = appPreferences.hiddenGraphSeries
 
         // Request notification permission on first launch (Android 13+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -198,9 +201,22 @@ class MainActivity : ComponentActivity() {
                     Screen.Forecast -> {
                         BackHandler { currentScreen = Screen.Usage }
                         val usageData = (uiState as? UiState.Success)?.data
+                        val codexData = (codexState as? CodexUiState.Connected)?.data
+                            ?: (uiState as? UiState.Success)?.codexData
                         ForecastScreen(
                             usageData = usageData,
+                            codexData = codexData,
                             history = usageHistory,
+                            hiddenSeries = hiddenGraphSeries,
+                            onToggleSeries = { key, visible ->
+                                val updated = if (visible) {
+                                    hiddenGraphSeries - key
+                                } else {
+                                    hiddenGraphSeries + key
+                                }
+                                hiddenGraphSeries = updated
+                                appPreferences.hiddenGraphSeries = updated
+                            },
                             onBack = { currentScreen = Screen.Usage }
                         )
                     }

@@ -30,6 +30,8 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.claudeusage.widget.data.local.UsageHistoryEntry
+import com.claudeusage.widget.data.local.UsageHistoryStore
+import com.claudeusage.widget.data.model.CodexUsageData
 import com.claudeusage.widget.data.model.UsageData
 import com.claudeusage.widget.ui.components.BannerAd
 import com.claudeusage.widget.ui.theme.*
@@ -38,35 +40,48 @@ import java.time.Duration
 import java.time.Instant
 import kotlin.math.roundToInt
 
-@OptIn(ExperimentalMaterial3Api::class)
+/** One selectable 7d limit line on the forecast graph. */
+private data class WeeklySeries(
+    val key: String,
+    val label: String,
+    val color: Color,
+    val currentUtil: Double?,
+    val resetsAt: Instant?,
+    val entries: List<UsageHistoryEntry>
+) {
+    /** Latest known utilization: live value, else last recorded point. */
+    val effectiveUtil: Double
+        get() = currentUtil ?: entries.lastOrNull()?.utilization ?: 0.0
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun ForecastScreen(
     usageData: UsageData?,
-    history: List<UsageHistoryEntry>,
+    codexData: CodexUsageData?,
+    history: Map<String, List<UsageHistoryEntry>>,
+    hiddenSeries: Set<String>,
+    onToggleSeries: (String, Boolean) -> Unit,
     onBack: () -> Unit
 ) {
-    val weeklyReset = usageData?.sevenDay?.resetsAt
-    val weeklyUtil = usageData?.sevenDay?.utilization ?: 0.0
+    val allSeries = remember(usageData, codexData, history) {
+        buildWeeklySeries(usageData, codexData, history)
+    }
+    // Keys not in hiddenSeries are shown, so new limits appear by default.
+    // If prefs somehow hide everything, fall back to showing all.
+    val visibleSeries = allSeries.filter { it.key !in hiddenSeries }
+        .ifEmpty { allSeries }
 
-    // Calculate week boundaries
+    // Shared week window: the overall Claude week when available
     val now = Instant.now()
-    val weekEndMs = weeklyReset?.toEpochMilli() ?: (now.toEpochMilli() + Duration.ofDays(7).toMillis())
     val weekDurationMs = Duration.ofDays(7).toMillis()
+    val weekEndMs = (usageData?.sevenDay?.resetsAt
+        ?: allSeries.firstNotNullOfOrNull { it.resetsAt })
+        ?.toEpochMilli()
+        ?: (now.toEpochMilli() + weekDurationMs)
     val weekStartMs = weekEndMs - weekDurationMs
     val totalWeekMs = weekDurationMs.toDouble()
-
-    // Elapsed fraction
     val elapsedMs = (now.toEpochMilli() - weekStartMs).coerceAtLeast(0)
-    val elapsedDays = elapsedMs / (1000.0 * 60 * 60 * 24)
-    val remainingDays = 7.0 - elapsedDays
-
-    // Burning rate calculation
-    val burningRatePerHour = if (elapsedDays > 0) weeklyUtil / (elapsedDays * 24) else 0.0
-    val remainingHours = remainingDays * 24
-    val projectedTotal = weeklyUtil + burningRatePerHour * remainingHours
-    val depletionHoursFromNow = if (burningRatePerHour > 0) {
-        (100.0 - weeklyUtil) / burningRatePerHour
-    } else Double.MAX_VALUE
 
     // Swipe-back gesture
     val coroutineScope = rememberCoroutineScope()
@@ -148,6 +163,41 @@ fun ForecastScreen(
                 shape = RoundedCornerShape(16.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
+                    // Series picker: one chip per available 7d limit
+                    if (allSeries.size > 1) {
+                        FlowRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            allSeries.forEach { series ->
+                                val selected = visibleSeries.any { it.key == series.key }
+                                FilterChip(
+                                    selected = selected,
+                                    onClick = {
+                                        // Keep at least one series on the graph
+                                        if (selected && visibleSeries.size == 1) return@FilterChip
+                                        onToggleSeries(series.key, !selected)
+                                    },
+                                    label = {
+                                        Text(text = series.label, fontSize = 12.sp)
+                                    },
+                                    leadingIcon = {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(8.dp)
+                                                .background(series.color, CircleShape)
+                                        )
+                                    },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = series.color.copy(alpha = 0.18f),
+                                        selectedLabelColor = MaterialTheme.colorScheme.onBackground
+                                    )
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+
                     val textMeasurer = rememberTextMeasurer()
 
                     Canvas(
@@ -162,6 +212,13 @@ fun ForecastScreen(
 
                         val graphWidth = size.width - leftPad - rightPad
                         val graphHeight = size.height - topPad - bottomPad
+
+                        fun xAt(timestampMs: Long): Float =
+                            leftPad + graphWidth * ((timestampMs - weekStartMs) / totalWeekMs)
+                                .toFloat().coerceIn(0f, 1f)
+
+                        fun yAt(utilization: Double): Float =
+                            topPad + graphHeight * (1 - (utilization / 100.0).toFloat().coerceIn(0f, 1f))
 
                         // Danger zone (above 80%)
                         val dangerY = topPad + graphHeight * (1 - 0.8f)
@@ -231,86 +288,78 @@ fun ForecastScreen(
                             strokeWidth = 1.dp.toPx()
                         )
 
-                        // Draw history polyline (only current week data)
-                        if (history.size >= 2) {
-                            val sortedHistory = history
+                        for (series in visibleSeries) {
+                            // History polyline (only current week data)
+                            val sortedHistory = series.entries
                                 .filter { it.timestamp >= weekStartMs }
                                 .sortedBy { it.timestamp }
                             for (i in 0 until sortedHistory.size - 1) {
                                 val e1 = sortedHistory[i]
                                 val e2 = sortedHistory[i + 1]
-
-                                val x1 = leftPad + graphWidth * ((e1.timestamp - weekStartMs) / totalWeekMs).toFloat().coerceIn(0f, 1f)
-                                val y1 = topPad + graphHeight * (1 - (e1.utilization / 100.0).toFloat().coerceIn(0f, 1f))
-                                val x2 = leftPad + graphWidth * ((e2.timestamp - weekStartMs) / totalWeekMs).toFloat().coerceIn(0f, 1f)
-                                val y2 = topPad + graphHeight * (1 - (e2.utilization / 100.0).toFloat().coerceIn(0f, 1f))
                                 drawLine(
-                                    color = ClaudePurple,
-                                    start = Offset(x1, y1),
-                                    end = Offset(x2, y2),
+                                    color = series.color,
+                                    start = Offset(xAt(e1.timestamp), yAt(e1.utilization)),
+                                    end = Offset(xAt(e2.timestamp), yAt(e2.utilization)),
                                     strokeWidth = 2.5.dp.toPx(),
                                     cap = StrokeCap.Round
                                 )
                             }
-                        }
 
-                        // Current position dot
-                        val currentX = leftPad + graphWidth * (elapsedMs / totalWeekMs).toFloat().coerceIn(0f, 1f)
-                        val currentY = topPad + graphHeight * (1 - (weeklyUtil / 100.0).toFloat().coerceIn(0f, 1f))
-                        drawCircle(
-                            color = ClaudePurpleLight,
-                            radius = 5.dp.toPx(),
-                            center = Offset(currentX, currentY)
-                        )
-                        drawCircle(
-                            color = ClaudePurple,
-                            radius = 3.dp.toPx(),
-                            center = Offset(currentX, currentY)
-                        )
-
-                        // Projection line (dashed)
-                        val projEndUtil = projectedTotal.coerceAtMost(100.0)
-                        val projEndX = leftPad + graphWidth
-                        val projEndY = topPad + graphHeight * (1 - (projEndUtil / 100.0).toFloat().coerceIn(0f, 1f))
-
-                        // If depletion before end of week, draw to depletion point, then flat at 100%
-                        if (projectedTotal >= 100.0 && depletionHoursFromNow < remainingHours) {
-                            val depletionFraction = ((elapsedMs + depletionHoursFromNow * 3600 * 1000) / totalWeekMs).toFloat().coerceIn(0f, 1f)
-                            val depletionX = leftPad + graphWidth * depletionFraction
-                            val depletionY = topPad // 100%
-
-                            // Dashed line to depletion
-                            drawDashedLine(
-                                color = ClaudePurpleLight.copy(alpha = 0.6f),
-                                start = Offset(currentX, currentY),
-                                end = Offset(depletionX, depletionY),
-                                strokeWidth = 2.dp.toPx()
-                            )
-
-                            // Depletion marker
+                            // Current position dot
+                            val util = series.effectiveUtil
+                            val currentX = xAt(now.toEpochMilli())
+                            val currentY = yAt(util)
                             drawCircle(
-                                color = StatusCritical,
+                                color = series.color.copy(alpha = 0.4f),
                                 radius = 5.dp.toPx(),
-                                center = Offset(depletionX, depletionY)
+                                center = Offset(currentX, currentY)
+                            )
+                            drawCircle(
+                                color = series.color,
+                                radius = 3.dp.toPx(),
+                                center = Offset(currentX, currentY)
                             )
 
-                            // Flat at 100% from depletion to end
-                            if (depletionFraction < 1f) {
+                            // Projection (dashed), using this series' own burning rate
+                            val rate = series.burningRatePerHour(weekStartMs, now)
+                            val remainingChartHours =
+                                (weekEndMs - now.toEpochMilli()).coerceAtLeast(0) / 3600_000.0
+                            val projectedAtEnd = util + rate * remainingChartHours
+                            val hoursTo100 = if (rate > 0) (100.0 - util) / rate else Double.MAX_VALUE
+
+                            if (projectedAtEnd >= 100.0 && hoursTo100 < remainingChartHours) {
+                                val depletionX = xAt(now.toEpochMilli() + (hoursTo100 * 3600_000).toLong())
+                                val depletionY = topPad // 100%
+
                                 drawDashedLine(
-                                    color = StatusCritical.copy(alpha = 0.4f),
-                                    start = Offset(depletionX, depletionY),
-                                    end = Offset(projEndX, depletionY),
+                                    color = series.color.copy(alpha = 0.6f),
+                                    start = Offset(currentX, currentY),
+                                    end = Offset(depletionX, depletionY),
+                                    strokeWidth = 2.dp.toPx()
+                                )
+                                // Depletion marker
+                                drawCircle(
+                                    color = StatusCritical,
+                                    radius = 5.dp.toPx(),
+                                    center = Offset(depletionX, depletionY)
+                                )
+                                // Flat at 100% from depletion to end
+                                if (depletionX < leftPad + graphWidth) {
+                                    drawDashedLine(
+                                        color = StatusCritical.copy(alpha = 0.4f),
+                                        start = Offset(depletionX, depletionY),
+                                        end = Offset(leftPad + graphWidth, depletionY),
+                                        strokeWidth = 2.dp.toPx()
+                                    )
+                                }
+                            } else {
+                                drawDashedLine(
+                                    color = series.color.copy(alpha = 0.6f),
+                                    start = Offset(currentX, currentY),
+                                    end = Offset(leftPad + graphWidth, yAt(projectedAtEnd.coerceAtMost(100.0))),
                                     strokeWidth = 2.dp.toPx()
                                 )
                             }
-                        } else {
-                            // Simple projection to end of week
-                            drawDashedLine(
-                                color = ClaudePurpleLight.copy(alpha = 0.6f),
-                                start = Offset(currentX, currentY),
-                                end = Offset(projEndX, projEndY),
-                                strokeWidth = 2.dp.toPx()
-                            )
                         }
                     }
                 }
@@ -318,41 +367,33 @@ fun ForecastScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Stats row
+            // Per-series stats
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = ExtendedTheme.colors.cardBackground),
                 shape = RoundedCornerShape(16.dp)
             ) {
-                Row(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    StatItem(
-                        label = "Burning Rate",
-                        value = String.format("%.2f%%/h", burningRatePerHour),
-                        color = ClaudePurpleLight
-                    )
-                    StatItem(
-                        label = "Day",
-                        value = String.format("%.1f / 7", elapsedDays),
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-                    StatItem(
-                        label = "Depletion",
-                        value = if (projectedTotal >= 100.0 && depletionHoursFromNow < remainingHours) {
-                            formatDepletionTime(depletionHoursFromNow)
-                        } else {
-                            "Safe"
-                        },
-                        color = if (projectedTotal >= 100.0 && depletionHoursFromNow < remainingHours) {
-                            StatusCritical
-                        } else {
-                            StatusExtra
-                        }
-                    )
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = "Day ${String.format("%.1f", elapsedMs / (1000.0 * 60 * 60 * 24))} / 7",
+                            color = ExtendedTheme.colors.textMuted,
+                            fontSize = 11.sp
+                        )
+                    }
+                    visibleSeries.forEach { series ->
+                        SeriesStatRow(
+                            series = series,
+                            weekStartMs = weekStartMs,
+                            weekEndMs = weekEndMs,
+                            now = now
+                        )
+                    }
                 }
             }
 
@@ -365,15 +406,13 @@ fun ForecastScreen(
                 shape = RoundedCornerShape(16.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    LegendItem(color = ClaudePurple, label = "Actual usage")
+                    LegendItem(color = ExtendedTheme.colors.textSecondary, label = "Actual usage (per limit color)")
                     Spacer(modifier = Modifier.height(8.dp))
-                    LegendItem(color = ClaudePurpleLight.copy(alpha = 0.6f), label = "Projected usage", dashed = true)
+                    LegendItem(color = ExtendedTheme.colors.textSecondary.copy(alpha = 0.6f), label = "Projected usage", dashed = true)
                     Spacer(modifier = Modifier.height(8.dp))
                     LegendItem(color = StatusCritical.copy(alpha = 0.15f), label = "Danger zone (>80%)")
-                    if (projectedTotal >= 100.0 && depletionHoursFromNow < remainingHours) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        LegendItem(color = StatusCritical, label = "Projected depletion point")
-                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    LegendItem(color = StatusCritical, label = "Projected depletion point")
                 }
             }
 
@@ -390,24 +429,138 @@ fun ForecastScreen(
     } // Box
 }
 
+/**
+ * Burning rate in %/h based on this series' own weekly window when its
+ * reset time is known, else the shared window passed in.
+ */
+private fun WeeklySeries.burningRatePerHour(sharedWeekStartMs: Long, now: Instant): Double {
+    val weekStart = resetsAt?.toEpochMilli()?.minus(Duration.ofDays(7).toMillis())
+        ?: sharedWeekStartMs
+    val elapsedHours = (now.toEpochMilli() - weekStart) / 3600_000.0
+    return if (elapsedHours > 0) effectiveUtil / elapsedHours else 0.0
+}
+
+private fun buildWeeklySeries(
+    usageData: UsageData?,
+    codexData: CodexUsageData?,
+    history: Map<String, List<UsageHistoryEntry>>
+): List<WeeklySeries> {
+    val palette = listOf(GraphBlue, GraphAmber, GraphPink, GraphCyan, GraphLime)
+    var paletteIndex = 0
+    fun nextColor() = palette[paletteIndex++ % palette.size]
+
+    val result = mutableListOf<WeeklySeries>()
+    val usedKeys = mutableSetOf(
+        UsageHistoryStore.SERIES_WEEKLY_ALL,
+        UsageHistoryStore.SERIES_CODEX_WEEKLY
+    )
+
+    // Overall Claude weekly limit
+    result += WeeklySeries(
+        key = UsageHistoryStore.SERIES_WEEKLY_ALL,
+        label = "Claude",
+        color = ClaudePurple,
+        currentUtil = usageData?.sevenDay?.utilization,
+        resetsAt = usageData?.sevenDay?.resetsAt,
+        entries = history[UsageHistoryStore.SERIES_WEEKLY_ALL].orEmpty()
+    )
+
+    // Per-model weekly limits currently reported (Fable, Sonnet, ...)
+    usageData?.dynamicMetrics
+        ?.filter { it.key.startsWith("seven_day_") || it.label.endsWith("(7d)") }
+        ?.forEach { labeled ->
+            usedKeys += labeled.key
+            result += WeeklySeries(
+                key = labeled.key,
+                label = labeled.label.substringBefore(" ("),
+                color = nextColor(),
+                currentUtil = labeled.metric.utilization,
+                resetsAt = labeled.metric.resetsAt,
+                entries = history[labeled.key].orEmpty()
+            )
+        }
+
+    // Codex/GPT weekly window
+    val codexWeekly = codexData?.let { data ->
+        listOfNotNull(data.primaryWindow, data.secondaryWindow)
+            .firstOrNull { it.windowLabel == "weekly" }
+    }
+    result += WeeklySeries(
+        key = UsageHistoryStore.SERIES_CODEX_WEEKLY,
+        label = "GPT",
+        color = CodexGreen,
+        currentUtil = codexWeekly?.usedPercent,
+        resetsAt = codexWeekly?.resetAt,
+        entries = history[UsageHistoryStore.SERIES_CODEX_WEEKLY].orEmpty()
+    )
+
+    // Series that only exist in history (e.g. limit no longer reported)
+    history.keys
+        .filter { it !in usedKeys }
+        .sorted()
+        .forEach { key ->
+            result += WeeklySeries(
+                key = key,
+                label = UsageData.labelForKey(key).substringBefore(" ("),
+                color = nextColor(),
+                currentUtil = null,
+                resetsAt = null,
+                entries = history[key].orEmpty()
+            )
+        }
+
+    return result.filter { it.currentUtil != null || it.entries.isNotEmpty() }
+}
+
 @Composable
-private fun StatItem(
-    label: String,
-    value: String,
-    color: Color
+private fun SeriesStatRow(
+    series: WeeklySeries,
+    weekStartMs: Long,
+    weekEndMs: Long,
+    now: Instant
 ) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+    val util = series.effectiveUtil
+    val rate = series.burningRatePerHour(weekStartMs, now)
+    val remainingHours = (weekEndMs - now.toEpochMilli()).coerceAtLeast(0) / 3600_000.0
+    val projected = util + rate * remainingHours
+    val hoursTo100 = if (rate > 0) (100.0 - util) / rate else Double.MAX_VALUE
+    val willDeplete = projected >= 100.0 && hoursTo100 < remainingHours
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(10.dp)
+                .background(series.color, CircleShape)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
         Text(
-            text = value,
-            color = color,
-            fontSize = 16.sp,
+            text = series.label,
+            color = MaterialTheme.colorScheme.onBackground,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            text = String.format("%.1f%%", util),
+            color = series.color,
+            fontSize = 13.sp,
             fontWeight = FontWeight.Bold
         )
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.width(12.dp))
         Text(
-            text = label,
-            color = ExtendedTheme.colors.textMuted,
-            fontSize = 11.sp
+            text = String.format("%.2f%%/h", rate),
+            color = ExtendedTheme.colors.textSecondary,
+            fontSize = 12.sp
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Text(
+            text = if (willDeplete) formatDepletionTime(hoursTo100) else "Safe",
+            color = if (willDeplete) StatusCritical else StatusExtra,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold
         )
     }
 }

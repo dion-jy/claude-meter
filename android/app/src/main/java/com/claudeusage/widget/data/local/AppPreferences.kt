@@ -33,6 +33,15 @@ class AppPreferences(context: Context) {
         prefs.edit().putStringSet(KEY_HIDDEN_METRICS, hidden).apply()
     }
 
+    /**
+     * Graph series keys the user has toggled off on the forecast screen.
+     * Keys not in this set are drawn, so newly appearing series (a new
+     * per-model limit, a freshly connected Codex account) show by default.
+     */
+    var hiddenGraphSeries: Set<String>
+        get() = prefs.getStringSet(KEY_HIDDEN_GRAPH_SERIES, null) ?: emptySet()
+        set(value) = prefs.edit().putStringSet(KEY_HIDDEN_GRAPH_SERIES, value.toSet()).apply()
+
     /** "dark" (default), "light", or "system" */
     var themeMode: String
         get() = prefs.getString(KEY_THEME_MODE, THEME_DARK) ?: THEME_DARK
@@ -46,6 +55,7 @@ class AppPreferences(context: Context) {
         private const val PREFS_NAME = "claude_app_preferences"
         private const val KEY_NOTIFICATION_ENABLED = "notification_enabled"
         private const val KEY_HIDDEN_METRICS = "hidden_metric_keys"
+        private const val KEY_HIDDEN_GRAPH_SERIES = "hidden_graph_series"
         // Legacy per-metric booleans, read once by migrateLegacyVisibility()
         private const val KEY_SHOW_SONNET = "show_sonnet"
         private const val KEY_SHOW_EXTRA_USAGE = "show_extra_usage"
