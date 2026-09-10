@@ -125,8 +125,8 @@ class UsageViewModel(application: Application) : AndroidViewModel(application) {
 
     fun onAppForeground() {
         isAppInForeground = true
-        val state = _uiState.value
-        if (state is UiState.Success) {
+        // ChatGPT-only users have no Claude data, but still need the refresh loop
+        if (_uiState.value is UiState.Success || _codexState.value is CodexUiState.Connected) {
             startAutoRefresh()
         }
     }
@@ -199,6 +199,7 @@ class UsageViewModel(application: Application) : AndroidViewModel(application) {
         result.fold(
             onSuccess = { data ->
                 _codexState.value = CodexUiState.Connected(data)
+                startAutoRefresh()
                 // Also merge into main UiState if Claude is already loaded
                 val current = _uiState.value
                 if (current is UiState.Success) {

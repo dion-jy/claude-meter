@@ -5,6 +5,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -31,6 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.claudeusage.widget.data.local.AppPreferences
 import com.claudeusage.widget.data.model.CodexUsageData
 import com.claudeusage.widget.data.model.ExtraUsageInfo
 import com.claudeusage.widget.data.model.UsageData
@@ -48,6 +50,8 @@ fun UsageScreen(
     lastUpdated: String?,
     hiddenMetrics: Set<String>,
     codexState: CodexUiState = CodexUiState.NotConnected,
+    primaryMode: String = AppPreferences.MODE_CLAUDE,
+    onModeChange: (String) -> Unit = {},
     onRefresh: () -> Unit,
     onLogout: () -> Unit,
     onLoginClick: () -> Unit,
@@ -58,20 +62,38 @@ fun UsageScreen(
     onCodexLogout: () -> Unit = {}
 ) {
     var showLogoutDialog by remember { mutableStateOf(false) }
+    val isChatGptMode = primaryMode == AppPreferences.MODE_CHATGPT
+    // The top bar acts on whichever provider the current mode is centered on
+    val primaryConnected = if (isChatGptMode) {
+        codexState is CodexUiState.Connected
+    } else {
+        uiState is UiState.Success
+    }
 
     if (showLogoutDialog) {
         AlertDialog(
             onDismissRequest = { showLogoutDialog = false },
-            title = { Text("Logout", fontWeight = FontWeight.Bold) },
+            title = {
+                Text(
+                    text = if (isChatGptMode) "Disconnect ChatGPT" else "Logout",
+                    fontWeight = FontWeight.Bold
+                )
+            },
             text = {
-                Text("Are you sure you want to logout?")
+                Text(
+                    if (isChatGptMode) "Are you sure you want to disconnect your ChatGPT account?"
+                    else "Are you sure you want to logout?"
+                )
             },
             confirmButton = {
                 TextButton(onClick = {
                     showLogoutDialog = false
-                    onLogout()
+                    if (isChatGptMode) onCodexLogout() else onLogout()
                 }) {
-                    Text("Logout", color = MaterialTheme.colorScheme.error)
+                    Text(
+                        text = if (isChatGptMode) "Disconnect" else "Logout",
+                        color = MaterialTheme.colorScheme.error
+                    )
                 }
             },
             dismissButton = {
@@ -87,19 +109,22 @@ fun UsageScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Claude Meter",
+                        text = if (isChatGptMode) "Codex Meter" else "Claude Meter",
                         fontWeight = FontWeight.Bold,
                         fontSize = 20.sp
                     )
                 },
                 actions = {
-                    if (uiState is UiState.Success) {
-                        IconButton(onClick = onForecastClick) {
-                            Icon(
-                                Icons.Default.ShowChart,
-                                contentDescription = "Usage Forecast",
-                                tint = ExtendedTheme.colors.textSecondary
-                            )
+                    if (uiState is UiState.Success || primaryConnected) {
+                        // Forecast is built from Claude history only
+                        if (uiState is UiState.Success) {
+                            IconButton(onClick = onForecastClick) {
+                                Icon(
+                                    Icons.Default.ShowChart,
+                                    contentDescription = "Usage Forecast",
+                                    tint = ExtendedTheme.colors.textSecondary
+                                )
+                            }
                         }
                         IconButton(onClick = onSettingsClick) {
                             Icon(
@@ -113,7 +138,7 @@ fun UsageScreen(
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(20.dp),
                                     strokeWidth = 2.dp,
-                                    color = ClaudePurpleLight
+                                    color = if (isChatGptMode) CodexGreen else ClaudePurpleLight
                                 )
                             } else {
                                 Icon(
@@ -123,12 +148,14 @@ fun UsageScreen(
                                 )
                             }
                         }
-                        IconButton(onClick = { showLogoutDialog = true }) {
-                            Icon(
-                                Icons.Default.Logout,
-                                contentDescription = "Logout",
-                                tint = ExtendedTheme.colors.textSecondary
-                            )
+                        if (primaryConnected) {
+                            IconButton(onClick = { showLogoutDialog = true }) {
+                                Icon(
+                                    Icons.Default.Logout,
+                                    contentDescription = if (isChatGptMode) "Disconnect" else "Logout",
+                                    tint = ExtendedTheme.colors.textSecondary
+                                )
+                            }
                         }
                     }
                 },
@@ -140,30 +167,51 @@ fun UsageScreen(
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            when (uiState) {
-                is UiState.Loading -> LoadingContent()
-                is UiState.LoginRequired -> LoginContent(
-                    onLoginClick = onLoginClick,
-                    onManualLogin = onManualLogin
-                )
-                is UiState.Success -> UsageContent(
-                    data = uiState.data,
-                    lastUpdated = lastUpdated,
-                    hiddenMetrics = hiddenMetrics,
-                    codexState = codexState,
-                    onCodexLoginClick = onCodexLoginClick,
-                    onCodexLogout = onCodexLogout
-                )
-                is UiState.Error -> ErrorContent(
-                    message = uiState.message,
-                    isAuthError = uiState.isAuthError,
-                    onRetry = if (uiState.isAuthError) onLoginClick else onRefresh
-                )
+            // Always visible, so a ChatGPT-only user can reach the app
+            // without being blocked by the Claude login screen (and vice versa)
+            ModeSwitch(
+                primaryMode = primaryMode,
+                onModeChange = onModeChange,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp)
+            )
+
+            Box(modifier = Modifier.weight(1f)) {
+                if (isChatGptMode) {
+                    ChatGptContent(
+                        codexState = codexState,
+                        claudeState = uiState,
+                        lastUpdated = lastUpdated,
+                        hiddenMetrics = hiddenMetrics,
+                        onCodexLoginClick = onCodexLoginClick,
+                        onLoginClick = onLoginClick
+                    )
+                } else {
+                    when (uiState) {
+                        is UiState.Loading -> LoadingContent()
+                        is UiState.LoginRequired -> LoginContent(
+                            onLoginClick = onLoginClick,
+                            onManualLogin = onManualLogin
+                        )
+                        is UiState.Success -> UsageContent(
+                            data = uiState.data,
+                            lastUpdated = lastUpdated,
+                            hiddenMetrics = hiddenMetrics,
+                            codexState = codexState,
+                            onCodexLoginClick = onCodexLoginClick,
+                            onCodexLogout = onCodexLogout
+                        )
+                        is UiState.Error -> ErrorContent(
+                            message = uiState.message,
+                            isAuthError = uiState.isAuthError,
+                            onRetry = if (uiState.isAuthError) onLoginClick else onRefresh
+                        )
+                    }
+                }
             }
         }
     }
@@ -808,13 +856,35 @@ private fun CodexWindowRow(
     resetAt: Instant?,
     progressTrackColor: Color
 ) {
-    val gradient = Brush.horizontalGradient(
-        colors = listOf(CodexGreen, CodexGreenLight)
+    val remaining = resetAt?.let { Duration.between(Instant.now(), it) }
+    CompactUsageRow(
+        label = label,
+        usedPercent = usedPercent,
+        remaining = remaining,
+        accent = CodexGreen,
+        accentLight = CodexGreenLight,
+        progressTrackColor = progressTrackColor
     )
+}
+
+/**
+ * One compact "label — percent — bar — resets in" row, used for whichever
+ * provider is currently the secondary one (and for the Codex windows).
+ */
+@Composable
+private fun CompactUsageRow(
+    label: String,
+    usedPercent: Double,
+    remaining: Duration?,
+    accent: Color,
+    accentLight: Color,
+    progressTrackColor: Color
+) {
+    val gradient = Brush.horizontalGradient(colors = listOf(accent, accentLight))
     val animatedProgress by animateFloatAsState(
         targetValue = (usedPercent / 100.0).toFloat().coerceIn(0f, 1f),
         animationSpec = tween(durationMillis = 800),
-        label = "codex_progress_$label"
+        label = "compact_progress_$label"
     )
 
     Row(
@@ -829,7 +899,7 @@ private fun CodexWindowRow(
         )
         Text(
             text = "${String.format("%.1f", usedPercent)}%",
-            color = if (usedPercent >= 80) StatusCritical else CodexGreen,
+            color = if (usedPercent >= 80) StatusCritical else accent,
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold
         )
@@ -837,7 +907,6 @@ private fun CodexWindowRow(
 
     Spacer(modifier = Modifier.height(4.dp))
 
-    // Progress bar
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -857,27 +926,28 @@ private fun CodexWindowRow(
         }
     }
 
-    // Reset time
-    if (resetAt != null) {
-        val remaining = Duration.between(Instant.now(), resetAt)
-        if (!remaining.isNegative) {
-            val totalSeconds = remaining.seconds
-            val days = totalSeconds / 86400
-            val h = (totalSeconds % 86400) / 3600
-            val m = (totalSeconds % 3600) / 60
-            val resetText = when {
-                days > 0 -> "Resets in ${days}d ${h}h"
-                h > 0 -> "Resets in ${h}h ${m}m"
-                m > 0 -> "Resets in ${m}m"
-                else -> "Resetting soon..."
-            }
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = resetText,
-                color = ExtendedTheme.colors.textMuted,
-                fontSize = 10.sp
-            )
-        }
+    val resetText = remaining?.let { formatResetText(it) }
+    if (resetText != null) {
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = resetText,
+            color = ExtendedTheme.colors.textMuted,
+            fontSize = 10.sp
+        )
+    }
+}
+
+private fun formatResetText(remaining: Duration): String? {
+    if (remaining.isNegative) return null
+    val totalSeconds = remaining.seconds
+    val days = totalSeconds / 86400
+    val h = (totalSeconds % 86400) / 3600
+    val m = (totalSeconds % 3600) / 60
+    return when {
+        days > 0 -> "Resets in ${days}d ${h}h"
+        h > 0 -> "Resets in ${h}h ${m}m"
+        m > 0 -> "Resets in ${m}m"
+        else -> "Resetting soon..."
     }
 }
 
@@ -924,5 +994,434 @@ private fun ErrorContent(
                 fontSize = 15.sp
             )
         }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Mode switching (Claude-centric <-> ChatGPT-centric)
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun ModeSwitch(
+    primaryMode: String,
+    onModeChange: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(ExtendedTheme.colors.cardBackground)
+            .padding(4.dp)
+    ) {
+        ModeSwitchItem(
+            label = "Claude",
+            selected = primaryMode != AppPreferences.MODE_CHATGPT,
+            accent = ClaudePurple,
+            onClick = { onModeChange(AppPreferences.MODE_CLAUDE) },
+            modifier = Modifier.weight(1f)
+        )
+        ModeSwitchItem(
+            label = "ChatGPT",
+            selected = primaryMode == AppPreferences.MODE_CHATGPT,
+            accent = CodexGreen,
+            onClick = { onModeChange(AppPreferences.MODE_CHATGPT) },
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
+private fun ModeSwitchItem(
+    label: String,
+    selected: Boolean,
+    accent: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val background by animateColorAsState(
+        targetValue = if (selected) accent else Color.Transparent,
+        animationSpec = tween(durationMillis = 250),
+        label = "mode_bg_$label"
+    )
+    val contentColor by animateColorAsState(
+        targetValue = if (selected) Color.White else ExtendedTheme.colors.textSecondary,
+        animationSpec = tween(durationMillis = 250),
+        label = "mode_fg_$label"
+    )
+
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(11.dp))
+            .background(background)
+            .clickable(onClick = onClick)
+            .padding(vertical = 9.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .clip(CircleShape)
+                    .background(if (selected) Color.White else accent)
+            )
+            Spacer(modifier = Modifier.width(7.dp))
+            Text(
+                text = label,
+                color = contentColor,
+                fontSize = 13.sp,
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
+            )
+        }
+    }
+}
+
+/** ChatGPT-centric layout: Codex on top, Claude demoted to a compact card. */
+@Composable
+private fun ChatGptContent(
+    codexState: CodexUiState,
+    claudeState: UiState,
+    lastUpdated: String?,
+    hiddenMetrics: Set<String>,
+    onCodexLoginClick: () -> Unit,
+    onLoginClick: () -> Unit
+) {
+    val scrollState = rememberScrollState()
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(scrollState)
+            .padding(horizontal = 20.dp, vertical = 8.dp)
+    ) {
+        when (codexState) {
+            is CodexUiState.Connected -> {
+                val data = codexState.data
+
+                if (data.limitReached) {
+                    LimitBanner(text = "Rate limit reached")
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+
+                CodexPrimaryCard(
+                    title = "Current Session",
+                    subtitle = "5-hour window",
+                    window = data.primaryWindow
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+
+                CodexPrimaryCard(
+                    title = "Weekly Limit",
+                    subtitle = "7-day window",
+                    window = data.secondaryWindow
+                )
+
+                if (data.planType != null) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text(
+                        text = "Plan: ${data.planType}",
+                        color = ExtendedTheme.colors.textMuted,
+                        fontSize = 11.sp,
+                        modifier = Modifier.padding(start = 4.dp)
+                    )
+                }
+            }
+            is CodexUiState.Loading -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 48.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(28.dp),
+                        strokeWidth = 2.dp,
+                        color = CodexGreen
+                    )
+                }
+            }
+            is CodexUiState.NotConnected -> CodexConnectCard(
+                message = "Connect your ChatGPT account to track Codex usage.",
+                buttonText = "Connect ChatGPT account",
+                onClick = onCodexLoginClick
+            )
+            is CodexUiState.Error -> CodexConnectCard(
+                message = codexState.message,
+                buttonText = if (codexState.isAuthError) "Reconnect" else "Retry",
+                onClick = onCodexLoginClick,
+                isError = true
+            )
+        }
+
+        // Claude, demoted to the secondary slot
+        if ("claude_usage" !in hiddenMetrics) {
+            Spacer(modifier = Modifier.height(20.dp))
+            ClaudeSecondaryCard(
+                claudeState = claudeState,
+                onLoginClick = onLoginClick
+            )
+        }
+
+        if (lastUpdated != null) {
+            Spacer(modifier = Modifier.height(20.dp))
+            Text(
+                text = "Last updated at $lastUpdated",
+                color = ExtendedTheme.colors.textMuted,
+                fontSize = 11.sp,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+        BannerAd(modifier = Modifier.fillMaxWidth())
+        Spacer(modifier = Modifier.height(16.dp))
+    }
+}
+
+@Composable
+private fun LimitBanner(text: String) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = StatusCritical.copy(alpha = 0.15f)),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Text(
+            text = text,
+            color = StatusCritical,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
+        )
+    }
+}
+
+/** Codex equivalent of [UsageCard] - the headline card in ChatGPT mode. */
+@Composable
+private fun CodexPrimaryCard(
+    title: String,
+    subtitle: String,
+    window: CodexUsageData.UsageWindow?
+) {
+    val usedPercent = window?.usedPercent ?: 0.0
+    val animatedProgress by animateFloatAsState(
+        targetValue = (usedPercent / 100.0).toFloat().coerceIn(0f, 1f),
+        animationSpec = tween(durationMillis = 800),
+        label = "codex_primary_$title"
+    )
+    val accent = when {
+        usedPercent >= 90.0 -> StatusCritical
+        usedPercent >= 75.0 -> StatusWarning
+        else -> CodexGreen
+    }
+    val gradient = when {
+        usedPercent >= 90.0 -> Brush.horizontalGradient(
+            listOf(Color(0xFFCC3030), StatusCritical, Color(0xFFF07070))
+        )
+        usedPercent >= 75.0 -> Brush.horizontalGradient(
+            listOf(Color(0xFFCC7A20), StatusWarning, Color(0xFFF0B060))
+        )
+        else -> Brush.horizontalGradient(
+            listOf(CodexGreenDark, CodexGreen, CodexGreenLight)
+        )
+    }
+    val progressTrackColor = ExtendedTheme.colors.progressTrack
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = ExtendedTheme.colors.cardBackground),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = title,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = subtitle,
+                        color = ExtendedTheme.colors.textMuted,
+                        fontSize = 11.sp
+                    )
+                }
+                Text(
+                    text = "${String.format("%.1f", usedPercent)}%",
+                    color = accent,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(12.dp)
+                    .clip(RoundedCornerShape(6.dp))
+            ) {
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    val cr = CornerRadius(6.dp.toPx())
+                    drawRoundRect(color = progressTrackColor, cornerRadius = cr)
+                    if (animatedProgress > 0f) {
+                        drawRoundRect(
+                            brush = gradient,
+                            size = Size(size.width * animatedProgress, size.height),
+                            cornerRadius = cr
+                        )
+                    }
+                }
+            }
+
+            val resetText = window?.resetAt
+                ?.let { Duration.between(Instant.now(), it) }
+                ?.let { formatResetText(it) }
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = resetText ?: "No active window",
+                color = ExtendedTheme.colors.textMuted,
+                fontSize = 11.sp
+            )
+        }
+    }
+}
+
+@Composable
+private fun CodexConnectCard(
+    message: String,
+    buttonText: String,
+    onClick: () -> Unit,
+    isError: Boolean = false
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = ExtendedTheme.colors.cardBackground),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Text(
+                text = "Codex Usage",
+                color = CodexGreen,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = message,
+                color = if (isError) StatusCritical else ExtendedTheme.colors.textSecondary,
+                fontSize = 13.sp
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(
+                onClick = onClick,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = CodexGreen),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text(text = buttonText, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+            }
+        }
+    }
+}
+
+/** Claude in the secondary slot, mirroring how Codex looks in Claude mode. */
+@Composable
+private fun ClaudeSecondaryCard(
+    claudeState: UiState,
+    onLoginClick: () -> Unit
+) {
+    val progressTrackColor = ExtendedTheme.colors.progressTrack
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = ExtendedTheme.colors.cardBackground),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Column {
+                Text(
+                    text = "Claude Usage",
+                    color = ClaudePurpleLight,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = "Claude.ai",
+                    color = ExtendedTheme.colors.textMuted,
+                    fontSize = 11.sp
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            when (claudeState) {
+                is UiState.Success -> {
+                    CompactUsageRow(
+                        label = "Session (5h)",
+                        usedPercent = claudeState.data.fiveHour?.utilization ?: 0.0,
+                        remaining = claudeState.data.fiveHour?.remainingDuration,
+                        accent = ClaudePurpleLight,
+                        accentLight = ClaudePurple,
+                        progressTrackColor = progressTrackColor
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    CompactUsageRow(
+                        label = "Weekly (7d)",
+                        usedPercent = claudeState.data.sevenDay?.utilization ?: 0.0,
+                        remaining = claudeState.data.sevenDay?.remainingDuration,
+                        accent = ClaudePurpleLight,
+                        accentLight = ClaudePurple,
+                        progressTrackColor = progressTrackColor
+                    )
+                }
+                is UiState.Loading -> Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.dp,
+                        color = ClaudePurpleLight
+                    )
+                }
+                is UiState.LoginRequired -> ClaudeConnectButton(
+                    text = "Sign in with Claude.ai",
+                    onClick = onLoginClick
+                )
+                is UiState.Error -> {
+                    Text(
+                        text = claudeState.message,
+                        color = StatusCritical,
+                        fontSize = 12.sp
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    ClaudeConnectButton(
+                        text = if (claudeState.isAuthError) "Sign In Again" else "Retry",
+                        onClick = onLoginClick
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ClaudeConnectButton(text: String, onClick: () -> Unit) {
+    OutlinedButton(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = ClaudePurpleLight),
+        shape = RoundedCornerShape(10.dp)
+    ) {
+        Text(text = text, fontSize = 14.sp)
     }
 }
