@@ -172,21 +172,14 @@ fun UsageScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Always visible, so a ChatGPT-only user can reach the app
-            // without being blocked by the Claude login screen (and vice versa).
-            // Deliberately low-emphasis: this is a set-once preference, not a
-            // control the user is meant to tap often.
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 2.dp),
-                horizontalArrangement = Arrangement.End
-            ) {
-                ModeSwitch(
-                    primaryMode = primaryMode,
-                    onModeChange = onModeChange
-                )
-            }
+            // Names the provider the screen leads with, so the hierarchy is
+            // stated rather than implied by card sizes alone. Always visible,
+            // so a ChatGPT-only user can reach the app without being blocked
+            // by the Claude login screen (and vice versa).
+            PrimaryProviderHeader(
+                primaryMode = primaryMode,
+                onModeChange = onModeChange
+            )
 
             Box(modifier = Modifier.weight(1f)) {
                 if (isChatGptMode) {
@@ -716,20 +709,12 @@ private fun CodexSection(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = "Codex Usage",
-                            color = CodexGreen,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "(beta)",
-                            color = ExtendedTheme.colors.textMuted,
-                            fontSize = 11.sp
-                        )
-                    }
+                    Text(
+                        text = "Codex Usage",
+                        color = CodexGreen,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
                     Text(
                         text = "ChatGPT / Codex",
                         color = ExtendedTheme.colors.textMuted,
@@ -1008,6 +993,56 @@ private fun ErrorContent(
 // ---------------------------------------------------------------------------
 // Mode switching (Claude-centric <-> ChatGPT-centric)
 // ---------------------------------------------------------------------------
+
+@Composable
+private fun PrimaryProviderHeader(
+    primaryMode: String,
+    onModeChange: (String) -> Unit
+) {
+    val isChatGpt = primaryMode == AppPreferences.MODE_CHATGPT
+    val accent = if (isChatGpt) CodexGreen else ClaudePurpleLight
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 2.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(7.dp)
+                    .clip(CircleShape)
+                    .background(accent)
+            )
+            Spacer(modifier = Modifier.width(7.dp))
+            Text(
+                text = if (isChatGpt) "ChatGPT" else "Claude",
+                color = accent,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.width(7.dp))
+            Text(
+                text = "MAIN",
+                color = accent,
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.6.sp,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(accent.copy(alpha = 0.16f))
+                    .padding(horizontal = 5.dp, vertical = 2.dp)
+            )
+        }
+
+        ModeSwitch(
+            primaryMode = primaryMode,
+            onModeChange = onModeChange
+        )
+    }
+}
 
 @Composable
 private fun ModeSwitch(
@@ -1354,7 +1389,7 @@ private fun ClaudeSecondaryCard(
                 Text(
                     text = "Claude Usage",
                     color = ClaudePurpleLight,
-                    fontSize = 16.sp,
+                    fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
