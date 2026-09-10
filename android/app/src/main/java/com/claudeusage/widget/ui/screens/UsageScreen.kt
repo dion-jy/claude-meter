@@ -1009,33 +1009,12 @@ private fun PrimaryProviderHeader(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .size(7.dp)
-                    .clip(CircleShape)
-                    .background(accent)
-            )
-            Spacer(modifier = Modifier.width(7.dp))
-            Text(
-                text = if (isChatGpt) "ChatGPT" else "Claude",
-                color = accent,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.width(7.dp))
-            Text(
-                text = "MAIN",
-                color = accent,
-                fontSize = 9.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 0.6.sp,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(accent.copy(alpha = 0.16f))
-                    .padding(horizontal = 5.dp, vertical = 2.dp)
-            )
-        }
+        Text(
+            text = if (isChatGpt) "ChatGPT" else "Claude",
+            color = accent,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold
+        )
 
         ModeSwitch(
             primaryMode = primaryMode,
@@ -1052,17 +1031,18 @@ private fun ModeSwitch(
 ) {
     Row(
         modifier = modifier
-            .clip(RoundedCornerShape(13.dp))
+            .clip(RoundedCornerShape(12.dp))
             .background(ExtendedTheme.colors.cardBackground)
-            .padding(3.dp)
+            .padding(3.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        ModeSwitchItem(
+        ModeSwitchDot(
             label = "Claude",
             selected = primaryMode != AppPreferences.MODE_CHATGPT,
             accent = ClaudePurpleLight,
             onClick = { onModeChange(AppPreferences.MODE_CLAUDE) }
         )
-        ModeSwitchItem(
+        ModeSwitchDot(
             label = "ChatGPT",
             selected = primaryMode == AppPreferences.MODE_CHATGPT,
             accent = CodexGreen,
@@ -1071,45 +1051,39 @@ private fun ModeSwitch(
     }
 }
 
+/** Unlabeled on purpose - the header next to it already names the active provider. */
 @Composable
-private fun ModeSwitchItem(
+private fun ModeSwitchDot(
     label: String,
     selected: Boolean,
     accent: Color,
     onClick: () -> Unit
 ) {
     val mutedColor = ExtendedTheme.colors.textMuted
-    val background by animateColorAsState(
-        targetValue = if (selected) accent.copy(alpha = 0.18f) else Color.Transparent,
+    val dotColor by animateColorAsState(
+        targetValue = if (selected) accent else mutedColor.copy(alpha = 0.45f),
         animationSpec = tween(durationMillis = 250),
-        label = "mode_bg_$label"
+        label = "mode_dot_$label"
     )
-    val contentColor by animateColorAsState(
-        targetValue = if (selected) accent else mutedColor,
+    val background by animateColorAsState(
+        targetValue = if (selected) accent.copy(alpha = 0.16f) else Color.Transparent,
         animationSpec = tween(durationMillis = 250),
-        label = "mode_fg_$label"
+        label = "mode_dot_bg_$label"
     )
 
-    Row(
+    Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(10.dp))
+            .clip(RoundedCornerShape(9.dp))
             .background(background)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 5.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .clickable(onClickLabel = "Show $label usage first", onClick = onClick)
+            .size(width = 32.dp, height = 26.dp),
+        contentAlignment = Alignment.Center
     ) {
         Box(
             modifier = Modifier
-                .size(6.dp)
+                .size(if (selected) 8.dp else 7.dp)
                 .clip(CircleShape)
-                .background(if (selected) accent else mutedColor.copy(alpha = 0.5f))
-        )
-        Spacer(modifier = Modifier.width(5.dp))
-        Text(
-            text = label,
-            color = contentColor,
-            fontSize = 11.sp,
-            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
+                .background(dotColor)
         )
     }
 }
