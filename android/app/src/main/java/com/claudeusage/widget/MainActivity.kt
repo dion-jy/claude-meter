@@ -30,6 +30,7 @@ import com.claudeusage.widget.ui.screens.UsageScreen
 import com.claudeusage.widget.ui.screens.UsageViewModel
 import com.claudeusage.widget.ui.components.InterstitialAdManager
 import com.claudeusage.widget.ui.theme.ClaudeUsageTheme
+import com.claudeusage.widget.widget.UsageWidgetReceiver
 
 private enum class Screen { Usage, Settings, Forecast, PrivacyPolicy }
 
@@ -42,6 +43,7 @@ class MainActivity : ComponentActivity() {
     private var notificationEnabled by mutableStateOf(false)
     private var coachEnabled by mutableStateOf(true)
     private var themeMode by mutableStateOf(AppPreferences.THEME_DARK)
+    private var primaryMode by mutableStateOf(AppPreferences.MODE_CLAUDE)
     private var hiddenMetrics by mutableStateOf<Set<String>>(emptySet())
     private var hiddenGraphSeries by mutableStateOf<Set<String>>(emptySet())
     private val interstitialAdManager = InterstitialAdManager()
@@ -89,6 +91,7 @@ class MainActivity : ComponentActivity() {
         notificationEnabled = appPreferences.notificationEnabled
         coachEnabled = appPreferences.coachEnabled
         themeMode = appPreferences.themeMode
+        primaryMode = appPreferences.primaryMode
 
         // Load metric visibility from preferences
         hiddenMetrics = appPreferences.hiddenMetricKeys
@@ -130,6 +133,8 @@ class MainActivity : ComponentActivity() {
                             lastUpdated = lastUpdated,
                             hiddenMetrics = hiddenMetrics,
                             codexState = codexState,
+                            primaryMode = primaryMode,
+                            onModeChange = { mode -> applyPrimaryMode(mode) },
                             onRefresh = viewModel::refresh,
                             onLogout = {
                                 interstitialAdManager.showThen(this@MainActivity) {
@@ -168,6 +173,7 @@ class MainActivity : ComponentActivity() {
                             }
                             val codexKey = AppPreferences.CODEX_METRIC_KEY
                             add(MetricToggle(codexKey, "Codex Usage", codexKey !in hiddenMetrics))
+                            add(MetricToggle("claude_usage", "Claude Usage", "claude_usage" !in hiddenMetrics))
                         }
 
                         SettingsScreen(
@@ -189,6 +195,8 @@ class MainActivity : ComponentActivity() {
                                 themeMode = mode
                                 appPreferences.themeMode = mode
                             },
+                            primaryMode = primaryMode,
+                            onPrimaryModeChange = { mode -> applyPrimaryMode(mode) },
                             onPrivacyPolicyClick = { currentScreen = Screen.PrivacyPolicy },
                             onBack = { currentScreen = Screen.Usage }
                         )
@@ -230,8 +238,9 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         viewModel.onAppForeground()
-        val state = viewModel.uiState.value
-        if (state is UiState.Success) {
+        val hasData = viewModel.uiState.value is UiState.Success ||
+            viewModel.codexState.value is CodexUiState.Connected
+        if (hasData) {
             viewModel.refresh()
         }
     }
@@ -278,6 +287,25 @@ class MainActivity : ComponentActivity() {
             appPreferences.notificationEnabled = false
             notificationEnabled = false
             UsageNotificationService.stop(applicationContext)
+        }
+    }
+
+    /** Switches which provider the app is centered on and refreshes its surfaces. */
+    private fun applyPrimaryMode(mode: String) {
+        if (mode == primaryMode) return
+        primaryMode = mode
+        appPreferences.primaryMode = mode
+        // Widget and notification follow the primary provider
+        try {
+            UsageWidgetReceiver.updateWidget(applicationContext)
+        } catch (_: Exception) {
+            // Widget might not be placed
+        }
+        if (appPreferences.notificationEnabled) {
+            UsageNotificationService.forceUpdate(applicationContext)
+        }
+        if (mode == AppPreferences.MODE_CHATGPT) {
+            viewModel.refreshCodex()
         }
     }
 
