@@ -26,6 +26,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.*
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -425,6 +426,7 @@ fun ForecastScreen(
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+                    StatHeaderRow()
                     // Same grouping and order as the chips above
                     visibleSeries.groupBy { it.provider }.forEach { (provider, group) ->
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -617,26 +619,65 @@ private fun SeriesStatRow(
             fontWeight = if (series.isTotal) FontWeight.Bold else FontWeight.SemiBold,
             modifier = Modifier.weight(1f)
         )
+        // Figures keep the 16sp weight they had as stat tiles; one header
+        // above the list names the columns so each row stays a single line
         Text(
             text = String.format("%.1f%%", util),
             color = series.color,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Bold
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.End,
+            modifier = Modifier.width(COL_USED)
         )
-        Spacer(modifier = Modifier.width(12.dp))
         Text(
-            text = String.format("%.2f%%/h", rate),
-            color = ExtendedTheme.colors.textSecondary,
-            fontSize = 12.sp
+            text = String.format("%.2f", rate),
+            color = MaterialTheme.colorScheme.onBackground,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.End,
+            modifier = Modifier.width(COL_BURN)
         )
-        Spacer(modifier = Modifier.width(12.dp))
         Text(
             text = if (willDeplete) formatDepletionTime(hoursTo100) else "Safe",
             color = if (willDeplete) StatusCritical else StatusExtra,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.SemiBold
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.End,
+            modifier = Modifier.width(COL_DEPLETES)
         )
     }
+}
+
+// Shared column widths keep the figures aligned down the list
+private val COL_USED = 52.dp
+private val COL_BURN = 50.dp
+private val COL_DEPLETES = 50.dp
+
+/** Names the three figure columns once, above the whole list. */
+@Composable
+private fun StatHeaderRow() {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Spacer(modifier = Modifier.weight(1f))
+        StatColumnLabel("USED", COL_USED)
+        StatColumnLabel("%/H", COL_BURN)
+        StatColumnLabel("LEFT", COL_DEPLETES)
+    }
+}
+
+@Composable
+private fun StatColumnLabel(text: String, width: androidx.compose.ui.unit.Dp) {
+    Text(
+        text = text,
+        color = ExtendedTheme.colors.textMuted,
+        fontSize = 9.sp,
+        fontWeight = FontWeight.Medium,
+        letterSpacing = 0.8.sp,
+        textAlign = TextAlign.End,
+        modifier = Modifier.width(width)
+    )
 }
 
 @Composable
