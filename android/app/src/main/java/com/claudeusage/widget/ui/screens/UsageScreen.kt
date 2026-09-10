@@ -173,12 +173,20 @@ fun UsageScreen(
                 .padding(paddingValues)
         ) {
             // Always visible, so a ChatGPT-only user can reach the app
-            // without being blocked by the Claude login screen (and vice versa)
-            ModeSwitch(
-                primaryMode = primaryMode,
-                onModeChange = onModeChange,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp)
-            )
+            // without being blocked by the Claude login screen (and vice versa).
+            // Deliberately low-emphasis: this is a set-once preference, not a
+            // control the user is meant to tap often.
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 2.dp),
+                horizontalArrangement = Arrangement.End
+            ) {
+                ModeSwitch(
+                    primaryMode = primaryMode,
+                    onModeChange = onModeChange
+                )
+            }
 
             Box(modifier = Modifier.weight(1f)) {
                 if (isChatGptMode) {
@@ -1009,24 +1017,21 @@ private fun ModeSwitch(
 ) {
     Row(
         modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(13.dp))
             .background(ExtendedTheme.colors.cardBackground)
-            .padding(4.dp)
+            .padding(3.dp)
     ) {
         ModeSwitchItem(
             label = "Claude",
             selected = primaryMode != AppPreferences.MODE_CHATGPT,
-            accent = ClaudePurple,
-            onClick = { onModeChange(AppPreferences.MODE_CLAUDE) },
-            modifier = Modifier.weight(1f)
+            accent = ClaudePurpleLight,
+            onClick = { onModeChange(AppPreferences.MODE_CLAUDE) }
         )
         ModeSwitchItem(
             label = "ChatGPT",
             selected = primaryMode == AppPreferences.MODE_CHATGPT,
             accent = CodexGreen,
-            onClick = { onModeChange(AppPreferences.MODE_CHATGPT) },
-            modifier = Modifier.weight(1f)
+            onClick = { onModeChange(AppPreferences.MODE_CHATGPT) }
         )
     }
 }
@@ -1036,43 +1041,41 @@ private fun ModeSwitchItem(
     label: String,
     selected: Boolean,
     accent: Color,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    onClick: () -> Unit
 ) {
+    val mutedColor = ExtendedTheme.colors.textMuted
     val background by animateColorAsState(
-        targetValue = if (selected) accent else Color.Transparent,
+        targetValue = if (selected) accent.copy(alpha = 0.18f) else Color.Transparent,
         animationSpec = tween(durationMillis = 250),
         label = "mode_bg_$label"
     )
     val contentColor by animateColorAsState(
-        targetValue = if (selected) Color.White else ExtendedTheme.colors.textSecondary,
+        targetValue = if (selected) accent else mutedColor,
         animationSpec = tween(durationMillis = 250),
         label = "mode_fg_$label"
     )
 
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(11.dp))
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(10.dp))
             .background(background)
             .clickable(onClick = onClick)
-            .padding(vertical = 9.dp),
-        contentAlignment = Alignment.Center
+            .padding(horizontal = 10.dp, vertical = 5.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .size(8.dp)
-                    .clip(CircleShape)
-                    .background(if (selected) Color.White else accent)
-            )
-            Spacer(modifier = Modifier.width(7.dp))
-            Text(
-                text = label,
-                color = contentColor,
-                fontSize = 13.sp,
-                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
-            )
-        }
+        Box(
+            modifier = Modifier
+                .size(6.dp)
+                .clip(CircleShape)
+                .background(if (selected) accent else mutedColor.copy(alpha = 0.5f))
+        )
+        Spacer(modifier = Modifier.width(5.dp))
+        Text(
+            text = label,
+            color = contentColor,
+            fontSize = 11.sp,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
+        )
     }
 }
 
