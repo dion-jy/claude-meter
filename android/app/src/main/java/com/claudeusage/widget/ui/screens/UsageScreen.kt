@@ -55,7 +55,6 @@ fun UsageScreen(
     onRefresh: () -> Unit,
     onLogout: () -> Unit,
     onLoginClick: () -> Unit,
-    onManualLogin: (String) -> Unit,
     onSettingsClick: () -> Unit,
     onForecastClick: () -> Unit = {},
     onCodexLoginClick: () -> Unit = {},
@@ -182,8 +181,22 @@ fun UsageScreen(
             )
 
             Box(modifier = Modifier.weight(1f)) {
-                if (isChatGptMode) {
-                    ChatGptContent(
+                // The full-screen login and splash only apply when neither
+                // provider is connected; otherwise whichever one is missing
+                // is just a connect card inside the normal layout.
+                val nothingConnected = uiState is UiState.LoginRequired &&
+                    codexState is CodexUiState.NotConnected
+                val coldStart = uiState is UiState.Loading &&
+                    codexState is CodexUiState.NotConnected
+
+                when {
+                    coldStart -> LoadingContent()
+                    nothingConnected -> LoginContent(
+                        onLoginClick = onLoginClick,
+                        onCodexLoginClick = onCodexLoginClick,
+                        onModeChange = onModeChange
+                    )
+                    isChatGptMode -> ChatGptContent(
                         codexState = codexState,
                         claudeState = uiState,
                         lastUpdated = lastUpdated,
@@ -191,27 +204,16 @@ fun UsageScreen(
                         onCodexLoginClick = onCodexLoginClick,
                         onLoginClick = onLoginClick
                     )
-                } else {
-                    when (uiState) {
-                        is UiState.Loading -> LoadingContent()
-                        is UiState.LoginRequired -> LoginContent(
-                            onLoginClick = onLoginClick,
-                            onManualLogin = onManualLogin
-                        )
-                        is UiState.Success -> UsageContent(
-                            data = uiState.data,
-                            lastUpdated = lastUpdated,
-                            hiddenMetrics = hiddenMetrics,
-                            codexState = codexState,
-                            onCodexLoginClick = onCodexLoginClick,
-                            onCodexLogout = onCodexLogout
-                        )
-                        is UiState.Error -> ErrorContent(
-                            message = uiState.message,
-                            isAuthError = uiState.isAuthError,
-                            onRetry = if (uiState.isAuthError) onLoginClick else onRefresh
-                        )
-                    }
+                    else -> UsageContent(
+                        claudeState = uiState,
+                        lastUpdated = lastUpdated,
+                        hiddenMetrics = hiddenMetrics,
+                        codexState = codexState,
+                        onLoginClick = onLoginClick,
+                        onRefresh = onRefresh,
+                        onCodexLoginClick = onCodexLoginClick,
+                        onCodexLogout = onCodexLogout
+                    )
                 }
             }
         }
@@ -279,11 +281,9 @@ private fun LoadingContent() {
 @Composable
 private fun LoginContent(
     onLoginClick: () -> Unit,
-    onManualLogin: (String) -> Unit
+    onCodexLoginClick: () -> Unit,
+    onModeChange: (String) -> Unit
 ) {
-    var showManualInput by remember { mutableStateOf(false) }
-    var sessionKeyInput by remember { mutableStateOf("") }
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -320,16 +320,17 @@ private fun LoginContent(
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = "Claude Meter",
+            text = "Track your usage limits",
             fontSize = 22.sp,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground
+            color = MaterialTheme.colorScheme.onBackground,
+            textAlign = TextAlign.Center
         )
 
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Sign in to monitor your Claude usage",
+            text = "Sign in with the account you use most",
             fontSize = 14.sp,
             color = ExtendedTheme.colors.textSecondary,
             textAlign = TextAlign.Center
@@ -337,14 +338,16 @@ private fun LoginContent(
 
         Spacer(modifier = Modifier.height(32.dp))
 
+        // Whichever provider the user signs in with becomes the primary one
         Button(
-            onClick = onLoginClick,
+            onClick = {
+                onModeChange(AppPreferences.MODE_CLAUDE)
+                onLoginClick()
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(52.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = ClaudePurple
-            ),
+            colors = ButtonDefaults.buttonColors(containerColor = ClaudePurple),
             shape = RoundedCornerShape(12.dp)
         ) {
             Text(
@@ -354,70 +357,45 @@ private fun LoginContent(
             )
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        OutlinedButton(
-            onClick = { showManualInput = !showManualInput },
+        Button(
+            onClick = {
+                onModeChange(AppPreferences.MODE_CHATGPT)
+                onCodexLoginClick()
+            },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(48.dp),
-            colors = ButtonDefaults.outlinedButtonColors(
-                contentColor = ExtendedTheme.colors.textSecondary
-            ),
+                .height(52.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = CodexGreen),
             shape = RoundedCornerShape(12.dp)
         ) {
             Text(
-                text = "Enter session key manually",
-                fontSize = 14.sp
+                text = "Sign in with ChatGPT",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold
             )
         }
 
-        AnimatedVisibility(visible = showManualInput) {
-            Column(modifier = Modifier.padding(top = 16.dp)) {
-                OutlinedTextField(
-                    value = sessionKeyInput,
-                    onValueChange = { sessionKeyInput = it },
-                    label = { Text("Session Key") },
-                    placeholder = { Text("sk-ant-...") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = ClaudePurple,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.surfaceVariant,
-                        focusedLabelColor = ClaudePurple,
-                        cursorColor = ClaudePurple
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                )
+        Spacer(modifier = Modifier.height(16.dp))
 
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Button(
-                    onClick = {
-                        if (sessionKeyInput.isNotBlank()) {
-                            onManualLogin(sessionKeyInput.trim())
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = sessionKeyInput.isNotBlank(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = ClaudePurpleDark
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text("Connect")
-                }
-            }
-        }
+        Text(
+            text = "You can connect the other one later.",
+            fontSize = 12.sp,
+            color = ExtendedTheme.colors.textMuted,
+            textAlign = TextAlign.Center
+        )
     }
 }
 
 @Composable
 private fun UsageContent(
-    data: UsageData,
+    claudeState: UiState,
     lastUpdated: String?,
     hiddenMetrics: Set<String>,
     codexState: CodexUiState = CodexUiState.NotConnected,
+    onLoginClick: () -> Unit = {},
+    onRefresh: () -> Unit = {},
     onCodexLoginClick: () -> Unit = {},
     onCodexLogout: () -> Unit = {}
 ) {
@@ -429,40 +407,61 @@ private fun UsageContent(
             .verticalScroll(scrollState)
             .padding(horizontal = 20.dp, vertical = 8.dp)
     ) {
-        // Main usage cards - always show even when null (after reset)
-        val defaultMetric = com.claudeusage.widget.data.model.UsageMetric(0.0, null)
+        when (claudeState) {
+            is UiState.Success -> {
+                val data = claudeState.data
+                // Main usage cards - always show even when null (after reset)
+                val defaultMetric = com.claudeusage.widget.data.model.UsageMetric(0.0, null)
 
-        UsageCard(
-            title = "Current Session",
-            subtitle = "5-hour window",
-            metric = data.fiveHour ?: defaultMetric,
-            totalWindowHours = 5.0
-        )
-        Spacer(modifier = Modifier.height(12.dp))
+                UsageCard(
+                    title = "Current Session",
+                    subtitle = "5-hour window",
+                    metric = data.fiveHour ?: defaultMetric,
+                    totalWindowHours = 5.0
+                )
+                Spacer(modifier = Modifier.height(12.dp))
 
-        UsageCard(
-            title = "Weekly Limit",
-            subtitle = "7-day window",
-            metric = data.sevenDay ?: defaultMetric,
-            totalWindowHours = 168.0
-        )
+                UsageCard(
+                    title = "Weekly Limit",
+                    subtitle = "7-day window",
+                    metric = data.sevenDay ?: defaultMetric,
+                    totalWindowHours = 168.0
+                )
 
-        // Extra metrics (filtered by settings)
-        val filteredMetrics = data.extraMetrics.filter { it.key !in hiddenMetrics }
-        if (filteredMetrics.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(16.dp))
-            filteredMetrics.forEach { labeled ->
-                Spacer(modifier = Modifier.height(8.dp))
-                if (labeled.key == "extra_usage") {
-                    MiniUsageCard(
-                        label = labeled.label,
-                        metric = labeled.metric,
-                        extraUsageInfo = data.extraUsageInfo
-                    )
-                } else {
-                    MiniUsageCard(label = labeled.label, metric = labeled.metric)
+                // Extra metrics (filtered by settings)
+                val filteredMetrics = data.extraMetrics.filter { it.key !in hiddenMetrics }
+                if (filteredMetrics.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    filteredMetrics.forEach { labeled ->
+                        Spacer(modifier = Modifier.height(8.dp))
+                        if (labeled.key == "extra_usage") {
+                            MiniUsageCard(
+                                label = labeled.label,
+                                metric = labeled.metric,
+                                extraUsageInfo = data.extraUsageInfo
+                            )
+                        } else {
+                            MiniUsageCard(label = labeled.label, metric = labeled.metric)
+                        }
+                    }
                 }
             }
+            is UiState.Loading -> ProviderLoadingBlock(accent = ClaudePurpleLight)
+            is UiState.LoginRequired -> PrimaryConnectCard(
+                title = "Claude Usage",
+                message = "Sign in to track your Claude usage.",
+                buttonText = "Sign in with Claude.ai",
+                accent = ClaudePurple,
+                onClick = onLoginClick
+            )
+            is UiState.Error -> PrimaryConnectCard(
+                title = "Claude Usage",
+                message = claudeState.message,
+                buttonText = if (claudeState.isAuthError) "Sign In Again" else "Retry",
+                accent = ClaudePurple,
+                onClick = if (claudeState.isAuthError) onLoginClick else onRefresh,
+                isError = true
+            )
         }
 
         // Codex usage section (toggled by settings)
@@ -944,52 +943,6 @@ private fun formatResetText(remaining: Duration): String? {
     }
 }
 
-@Composable
-private fun ErrorContent(
-    message: String,
-    isAuthError: Boolean,
-    onRetry: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(
-            text = if (isAuthError) "Session Expired" else "Error",
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
-            color = StatusCritical
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Text(
-            text = message,
-            fontSize = 14.sp,
-            color = ExtendedTheme.colors.textSecondary,
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Button(
-            onClick = onRetry,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = ClaudePurple
-            ),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Text(
-                text = if (isAuthError) "Sign In Again" else "Retry",
-                fontSize = 15.sp
-            )
-        }
-    }
-}
-
 // ---------------------------------------------------------------------------
 // Mode switching (Claude-centric <-> ChatGPT-centric)
 // ---------------------------------------------------------------------------
@@ -1138,28 +1091,19 @@ private fun ChatGptContent(
                     )
                 }
             }
-            is CodexUiState.Loading -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 48.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(28.dp),
-                        strokeWidth = 2.dp,
-                        color = CodexGreen
-                    )
-                }
-            }
-            is CodexUiState.NotConnected -> CodexConnectCard(
+            is CodexUiState.Loading -> ProviderLoadingBlock(accent = CodexGreen)
+            is CodexUiState.NotConnected -> PrimaryConnectCard(
+                title = "Codex Usage",
                 message = "Connect your ChatGPT account to track Codex usage.",
-                buttonText = "Connect ChatGPT account",
+                buttonText = "Sign in with ChatGPT",
+                accent = CodexGreen,
                 onClick = onCodexLoginClick
             )
-            is CodexUiState.Error -> CodexConnectCard(
+            is CodexUiState.Error -> PrimaryConnectCard(
+                title = "Codex Usage",
                 message = codexState.message,
                 buttonText = if (codexState.isAuthError) "Reconnect" else "Retry",
+                accent = CodexGreen,
                 onClick = onCodexLoginClick,
                 isError = true
             )
@@ -1305,10 +1249,13 @@ private fun CodexPrimaryCard(
     }
 }
 
+/** Connect prompt in the primary slot, for whichever provider is missing. */
 @Composable
-private fun CodexConnectCard(
+private fun PrimaryConnectCard(
+    title: String,
     message: String,
     buttonText: String,
+    accent: Color,
     onClick: () -> Unit,
     isError: Boolean = false
 ) {
@@ -1319,8 +1266,8 @@ private fun CodexConnectCard(
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
             Text(
-                text = "Codex Usage",
-                color = CodexGreen,
+                text = title,
+                color = accent,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold
             )
@@ -1336,12 +1283,28 @@ private fun CodexConnectCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = CodexGreen),
+                colors = ButtonDefaults.buttonColors(containerColor = accent),
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Text(text = buttonText, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
             }
         }
+    }
+}
+
+@Composable
+private fun ProviderLoadingBlock(accent: Color) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 48.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        CircularProgressIndicator(
+            modifier = Modifier.size(28.dp),
+            strokeWidth = 2.dp,
+            color = accent
+        )
     }
 }
 

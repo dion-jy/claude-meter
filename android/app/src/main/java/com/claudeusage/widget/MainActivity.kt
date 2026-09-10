@@ -141,9 +141,6 @@ class MainActivity : ComponentActivity() {
                                 }
                             },
                             onLoginClick = { launchLogin() },
-                            onManualLogin = { sessionKey ->
-                                viewModel.onManualLogin(sessionKey)
-                            },
                             onSettingsClick = { currentScreen = Screen.Settings },
                             onForecastClick = { currentScreen = Screen.Forecast },
                             onCodexLoginClick = { launchCodexLogin() },
