@@ -4,6 +4,7 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -28,10 +29,12 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.claudeusage.widget.R
 import com.claudeusage.widget.data.local.AppPreferences
 import com.claudeusage.widget.data.model.CodexUsageData
 import com.claudeusage.widget.data.model.ExtraUsageInfo
@@ -330,85 +333,66 @@ private fun LoginContent(
         Spacer(modifier = Modifier.height(32.dp))
 
         // Whichever provider the user signs in with becomes the primary one
-        ProviderSignInRow(
-            label = "Continue with Claude.ai",
-            accent = ClaudePurpleLight,
+        ProviderSignInButton(
+            label = "Continue with Claude",
+            iconRes = R.drawable.ic_provider_claude,
+            borderColor = ProviderClay,
+            contentColor = ExtendedTheme.colors.providerClayText,
             onClick = {
                 onModeChange(AppPreferences.MODE_CLAUDE)
                 onLoginClick()
             }
         )
 
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        ProviderSignInRow(
+        ProviderSignInButton(
             label = "Continue with ChatGPT",
-            accent = CodexGreen,
+            iconRes = R.drawable.ic_provider_openai,
+            borderColor = ExtendedTheme.colors.providerNeutralBorder,
+            contentColor = ExtendedTheme.colors.providerNeutralText,
             onClick = {
                 onModeChange(AppPreferences.MODE_CHATGPT)
                 onCodexLoginClick()
             }
         )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            text = "You can connect the other one later.",
-            fontSize = 12.sp,
-            color = ExtendedTheme.colors.textMuted,
-            textAlign = TextAlign.Center
-        )
     }
 }
 
-/** Sign-in choice styled like the app's cards rather than a saturated slab. */
+/**
+ * Sign-in choice. The two providers are told apart by their own logo and by a
+ * warm/neutral border - Anthropic's clay against a neutral grey - rather than by
+ * two saturated fills competing for attention.
+ */
 @Composable
-private fun ProviderSignInRow(
+private fun ProviderSignInButton(
     label: String,
-    accent: Color,
+    iconRes: Int,
+    borderColor: Color,
+    contentColor: Color,
     onClick: () -> Unit
 ) {
-    Card(
+    OutlinedButton(
+        onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(containerColor = ExtendedTheme.colors.cardBackground),
-        shape = RoundedCornerShape(14.dp)
+            .height(52.dp),
+        border = BorderStroke(1.5.dp, borderColor),
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = contentColor),
+        shape = RoundedCornerShape(12.dp)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 15.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(30.dp)
-                    .clip(RoundedCornerShape(9.dp))
-                    .background(accent.copy(alpha = 0.16f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(10.dp)
-                        .clip(CircleShape)
-                        .background(accent)
-                )
-            }
-            Spacer(modifier = Modifier.width(13.dp))
-            Text(
-                text = label,
-                color = MaterialTheme.colorScheme.onBackground,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier.weight(1f)
-            )
-            Text(
-                text = "\u203A",
-                color = ExtendedTheme.colors.textMuted,
-                fontSize = 18.sp
-            )
-        }
+        Icon(
+            painter = painterResource(iconRes),
+            contentDescription = null,
+            tint = contentColor,
+            modifier = Modifier.size(18.dp)
+        )
+        Spacer(modifier = Modifier.width(10.dp))
+        Text(
+            text = label,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.SemiBold
+        )
     }
 }
 
