@@ -29,6 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.claudeusage.widget.data.local.AppPreferences
 import com.claudeusage.widget.data.local.UsageHistoryEntry
 import com.claudeusage.widget.data.local.UsageHistoryStore
 import com.claudeusage.widget.data.model.CodexUsageData
@@ -40,10 +41,23 @@ import java.time.Duration
 import java.time.Instant
 import kotlin.math.roundToInt
 
-/** One selectable 7d limit line on the forecast graph. */
+private const val PROVIDER_CLAUDE = "Claude"
+private const val PROVIDER_OPENAI = "OpenAI"
+
+/**
+ * One selectable 7d limit line on the forecast graph.
+ *
+ * [provider] groups the chips and stat rows so a per-model sub-limit never
+ * sits beside its own parent as if the two were different products; the
+ * provider name is said once by the group label, and [label] only has to
+ * separate the limits within it. [isTotal] marks that parent — the
+ * provider-wide weekly limit the others roll up into.
+ */
 private data class WeeklySeries(
     val key: String,
     val label: String,
+    val provider: String,
+    val isTotal: Boolean,
     val color: Color,
     val currentUtil: Double?,
     val resetsAt: Instant?,
@@ -60,12 +74,16 @@ fun ForecastScreen(
     usageData: UsageData?,
     codexData: CodexUsageData?,
     history: Map<String, List<UsageHistoryEntry>>,
+    hiddenMetrics: Set<String>,
     hiddenSeries: Set<String>,
     onToggleSeries: (String, Boolean) -> Unit,
     onBack: () -> Unit
 ) {
-    val allSeries = remember(usageData, codexData, history) {
-        buildWeeklySeries(usageData, codexData, history)
+    // Two levels of visibility: Settings decides which limits the app tracks
+    // at all (hiddenMetrics, shared with UsageScreen), and the chips below
+    // filter what the graph draws from what is left.
+    val allSeries = remember(usageData, codexData, history, hiddenMetrics) {
+        buildWeeklySeries(usageData, codexData, history, hiddenMetrics)
     }
     // Keys not in hiddenSeries are shown, so new limits appear by default.
     // If prefs somehow hide everything, fall back to showing all.
@@ -163,39 +181,52 @@ fun ForecastScreen(
                 shape = RoundedCornerShape(16.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    // Series picker: one chip per available 7d limit
+                    // Series picker: one chip per available 7d limit, grouped
+                    // under the provider that owns it
                     if (allSeries.size > 1) {
-                        FlowRow(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            allSeries.forEach { series ->
-                                val selected = visibleSeries.any { it.key == series.key }
-                                FilterChip(
-                                    selected = selected,
-                                    onClick = {
-                                        // Keep at least one series on the graph
-                                        if (selected && visibleSeries.size == 1) return@FilterChip
-                                        onToggleSeries(series.key, !selected)
-                                    },
-                                    label = {
-                                        Text(text = series.label, fontSize = 12.sp)
-                                    },
-                                    leadingIcon = {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(8.dp)
-                                                .background(series.color, CircleShape)
+                        allSeries.groupBy { it.provider }.forEach { (provider, group) ->
+                            GroupLabel(provider)
+                            Spacer(modifier = Modifier.height(6.dp))
+                            FlowRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                group.forEach { series ->
+                                    val selected = visibleSeries.any { it.key == series.key }
+                                    FilterChip(
+                                        selected = selected,
+                                        onClick = {
+                                            // Keep at least one series on the graph
+                                            if (selected && visibleSeries.size == 1) return@FilterChip
+                                            onToggleSeries(series.key, !selected)
+                                        },
+                                        label = {
+                                            Text(
+                                                text = series.label,
+                                                fontSize = 12.sp,
+                                                fontWeight = if (series.isTotal) {
+                                                    FontWeight.Bold
+                                                } else {
+                                                    FontWeight.Medium
+                                                }
+                                            )
+                                        },
+                                        leadingIcon = {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(8.dp)
+                                                    .background(series.color, CircleShape)
+                                            )
+                                        },
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = series.color.copy(alpha = 0.18f),
+                                            selectedLabelColor = MaterialTheme.colorScheme.onBackground
                                         )
-                                    },
-                                    colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = series.color.copy(alpha = 0.18f),
-                                        selectedLabelColor = MaterialTheme.colorScheme.onBackground
                                     )
-                                )
+                                }
                             }
+                            Spacer(modifier = Modifier.height(10.dp))
                         }
-                        Spacer(modifier = Modifier.height(8.dp))
                     }
 
                     val textMeasurer = rememberTextMeasurer()
@@ -288,11 +319,15 @@ fun ForecastScreen(
                             strokeWidth = 1.dp.toPx()
                         )
 
-                        for (series in visibleSeries) {
+                        // Sub-limits first so the thicker total line sits on top
+                        for (series in visibleSeries.sortedBy { if (it.isTotal) 1 else 0 }) {
                             // History polyline (only current week data)
                             val sortedHistory = series.entries
                                 .filter { it.timestamp >= weekStartMs }
                                 .sortedBy { it.timestamp }
+                            // Weight, not hue, carries the parent/child relation:
+                            // colors stay free to tell the limits apart
+                            val strokeWidth = if (series.isTotal) 3.5.dp.toPx() else 2.5.dp.toPx()
                             for (i in 0 until sortedHistory.size - 1) {
                                 val e1 = sortedHistory[i]
                                 val e2 = sortedHistory[i + 1]
@@ -300,7 +335,7 @@ fun ForecastScreen(
                                     color = series.color,
                                     start = Offset(xAt(e1.timestamp), yAt(e1.utilization)),
                                     end = Offset(xAt(e2.timestamp), yAt(e2.utilization)),
-                                    strokeWidth = 2.5.dp.toPx(),
+                                    strokeWidth = strokeWidth,
                                     cap = StrokeCap.Round
                                 )
                             }
@@ -386,13 +421,19 @@ fun ForecastScreen(
                             fontSize = 11.sp
                         )
                     }
-                    visibleSeries.forEach { series ->
-                        SeriesStatRow(
-                            series = series,
-                            weekStartMs = weekStartMs,
-                            weekEndMs = weekEndMs,
-                            now = now
-                        )
+                    // Same grouping and order as the chips above
+                    visibleSeries.groupBy { it.provider }.forEach { (provider, group) ->
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            GroupLabel(provider)
+                            group.forEach { series ->
+                                SeriesStatRow(
+                                    series = series,
+                                    weekStartMs = weekStartMs,
+                                    weekEndMs = weekEndMs,
+                                    now = now
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -440,10 +481,17 @@ private fun WeeklySeries.burningRatePerHour(sharedWeekStartMs: Long, now: Instan
     return if (elapsedHours > 0) effectiveUtil / elapsedHours else 0.0
 }
 
+/**
+ * Builds the graph's series, skipping anything the user switched off in
+ * Settings so the forecast screen shows exactly the limits the rest of the
+ * app tracks. The provider-wide Claude total has no Settings toggle (it is
+ * a pinned card on the usage screen), so it is always present.
+ */
 private fun buildWeeklySeries(
     usageData: UsageData?,
     codexData: CodexUsageData?,
-    history: Map<String, List<UsageHistoryEntry>>
+    history: Map<String, List<UsageHistoryEntry>>,
+    hiddenMetrics: Set<String>
 ): List<WeeklySeries> {
     val palette = listOf(GraphBlue, GraphAmber, GraphPink, GraphCyan, GraphLime)
     var paletteIndex = 0
@@ -455,10 +503,12 @@ private fun buildWeeklySeries(
         UsageHistoryStore.SERIES_CODEX_WEEKLY
     )
 
-    // Overall Claude weekly limit
+    // Overall Claude weekly limit — the total its per-model limits roll into
     result += WeeklySeries(
         key = UsageHistoryStore.SERIES_WEEKLY_ALL,
-        label = "Claude",
+        label = "All",
+        provider = PROVIDER_CLAUDE,
+        isTotal = true,
         color = ClaudePurple,
         currentUtil = usageData?.sevenDay?.utilization,
         resetsAt = usageData?.sevenDay?.resetsAt,
@@ -470,9 +520,12 @@ private fun buildWeeklySeries(
         ?.filter { it.key.startsWith("seven_day_") || it.label.endsWith("(7d)") }
         ?.forEach { labeled ->
             usedKeys += labeled.key
+            if (labeled.key in hiddenMetrics) return@forEach
             result += WeeklySeries(
                 key = labeled.key,
                 label = labeled.label.substringBefore(" ("),
+                provider = PROVIDER_CLAUDE,
+                isTotal = false,
                 color = nextColor(),
                 currentUtil = labeled.metric.utilization,
                 resetsAt = labeled.metric.resetsAt,
@@ -480,28 +533,34 @@ private fun buildWeeklySeries(
             )
         }
 
-    // Codex/GPT weekly window
-    val codexWeekly = codexData?.let { data ->
-        listOfNotNull(data.primaryWindow, data.secondaryWindow)
-            .firstOrNull { it.windowLabel == "weekly" }
+    // Codex/GPT weekly window, behind the app-level Codex toggle
+    if (AppPreferences.CODEX_METRIC_KEY !in hiddenMetrics) {
+        val codexWeekly = codexData?.let { data ->
+            listOfNotNull(data.primaryWindow, data.secondaryWindow)
+                .firstOrNull { it.windowLabel == "weekly" }
+        }
+        result += WeeklySeries(
+            key = UsageHistoryStore.SERIES_CODEX_WEEKLY,
+            label = "GPT",
+            provider = PROVIDER_OPENAI,
+            isTotal = false,
+            color = CodexGreen,
+            currentUtil = codexWeekly?.usedPercent,
+            resetsAt = codexWeekly?.resetAt,
+            entries = history[UsageHistoryStore.SERIES_CODEX_WEEKLY].orEmpty()
+        )
     }
-    result += WeeklySeries(
-        key = UsageHistoryStore.SERIES_CODEX_WEEKLY,
-        label = "GPT",
-        color = CodexGreen,
-        currentUtil = codexWeekly?.usedPercent,
-        resetsAt = codexWeekly?.resetAt,
-        entries = history[UsageHistoryStore.SERIES_CODEX_WEEKLY].orEmpty()
-    )
 
     // Series that only exist in history (e.g. limit no longer reported)
     history.keys
-        .filter { it !in usedKeys }
+        .filter { it !in usedKeys && it !in hiddenMetrics }
         .sorted()
         .forEach { key ->
             result += WeeklySeries(
                 key = key,
                 label = UsageData.labelForKey(key).substringBefore(" ("),
+                provider = PROVIDER_CLAUDE,
+                isTotal = false,
                 color = nextColor(),
                 currentUtil = null,
                 resetsAt = null,
@@ -510,6 +569,17 @@ private fun buildWeeklySeries(
         }
 
     return result.filter { it.currentUtil != null || it.entries.isNotEmpty() }
+}
+
+@Composable
+private fun GroupLabel(provider: String) {
+    Text(
+        text = provider.uppercase(),
+        color = ExtendedTheme.colors.textMuted,
+        fontSize = 10.sp,
+        fontWeight = FontWeight.Medium,
+        letterSpacing = 1.sp
+    )
 }
 
 @Composable
@@ -540,7 +610,7 @@ private fun SeriesStatRow(
             text = series.label,
             color = MaterialTheme.colorScheme.onBackground,
             fontSize = 13.sp,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = if (series.isTotal) FontWeight.Bold else FontWeight.SemiBold,
             modifier = Modifier.weight(1f)
         )
         Text(

@@ -166,7 +166,8 @@ class MainActivity : ComponentActivity() {
                                     )
                                 )
                             }
-                            add(MetricToggle("codex_usage", "Codex Usage", "codex_usage" !in hiddenMetrics))
+                            val codexKey = AppPreferences.CODEX_METRIC_KEY
+                            add(MetricToggle(codexKey, "Codex Usage", codexKey !in hiddenMetrics))
                         }
 
                         SettingsScreen(
@@ -207,6 +208,7 @@ class MainActivity : ComponentActivity() {
                             usageData = usageData,
                             codexData = codexData,
                             history = usageHistory,
+                            hiddenMetrics = hiddenMetrics,
                             hiddenSeries = hiddenGraphSeries,
                             onToggleSeries = { key, visible ->
                                 val updated = if (visible) {

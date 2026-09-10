@@ -29,7 +29,7 @@ class AppPreferences(context: Context) {
         val hidden = mutableSetOf<String>()
         if (!prefs.getBoolean(KEY_SHOW_SONNET, true)) hidden.add("seven_day_sonnet")
         if (!prefs.getBoolean(KEY_SHOW_EXTRA_USAGE, true)) hidden.add("extra_usage")
-        if (!prefs.getBoolean(KEY_SHOW_CODEX_USAGE, true)) hidden.add("codex_usage")
+        if (!prefs.getBoolean(KEY_SHOW_CODEX_USAGE, true)) hidden.add(CODEX_METRIC_KEY)
         prefs.edit().putStringSet(KEY_HIDDEN_METRICS, hidden).apply()
     }
 
@@ -62,6 +62,13 @@ class AppPreferences(context: Context) {
         private const val KEY_SHOW_CODEX_USAGE = "show_codex_usage"
         private const val KEY_THEME_MODE = "theme_mode"
         private const val KEY_COACH_ENABLED = "coach_enabled"
+
+        /**
+         * App-level toggle key for the Codex/GPT card. Unlike the other
+         * metric keys this one is not reported by the server, so every
+         * screen that honours metric visibility shares this constant.
+         */
+        const val CODEX_METRIC_KEY = "codex_usage"
 
         const val THEME_DARK = "dark"
         const val THEME_LIGHT = "light"
