@@ -171,15 +171,6 @@ fun UsageScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Names the provider the screen leads with, so the hierarchy is
-            // stated rather than implied by card sizes alone. Always visible,
-            // so a ChatGPT-only user can reach the app without being blocked
-            // by the Claude login screen (and vice versa).
-            PrimaryProviderHeader(
-                primaryMode = primaryMode,
-                onModeChange = onModeChange
-            )
-
             Box(modifier = Modifier.weight(1f)) {
                 // The full-screen login and splash only apply when neither
                 // provider is connected; otherwise whichever one is missing
@@ -339,43 +330,25 @@ private fun LoginContent(
         Spacer(modifier = Modifier.height(32.dp))
 
         // Whichever provider the user signs in with becomes the primary one
-        Button(
+        ProviderSignInRow(
+            label = "Continue with Claude.ai",
+            accent = ClaudePurpleLight,
             onClick = {
                 onModeChange(AppPreferences.MODE_CLAUDE)
                 onLoginClick()
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = ClaudePurple),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Text(
-                text = "Sign in with Claude.ai",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold
-            )
-        }
+            }
+        )
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
-        Button(
+        ProviderSignInRow(
+            label = "Continue with ChatGPT",
+            accent = CodexGreen,
             onClick = {
                 onModeChange(AppPreferences.MODE_CHATGPT)
                 onCodexLoginClick()
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = CodexGreen),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Text(
-                text = "Sign in with ChatGPT",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold
-            )
-        }
+            }
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -385,6 +358,57 @@ private fun LoginContent(
             color = ExtendedTheme.colors.textMuted,
             textAlign = TextAlign.Center
         )
+    }
+}
+
+/** Sign-in choice styled like the app's cards rather than a saturated slab. */
+@Composable
+private fun ProviderSignInRow(
+    label: String,
+    accent: Color,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(containerColor = ExtendedTheme.colors.cardBackground),
+        shape = RoundedCornerShape(14.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 15.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(30.dp)
+                    .clip(RoundedCornerShape(9.dp))
+                    .background(accent.copy(alpha = 0.16f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(10.dp)
+                        .clip(CircleShape)
+                        .background(accent)
+                )
+            }
+            Spacer(modifier = Modifier.width(13.dp))
+            Text(
+                text = label,
+                color = MaterialTheme.colorScheme.onBackground,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                text = "\u203A",
+                color = ExtendedTheme.colors.textMuted,
+                fontSize = 18.sp
+            )
+        }
     }
 }
 
@@ -940,104 +964,6 @@ private fun formatResetText(remaining: Duration): String? {
         h > 0 -> "Resets in ${h}h ${m}m"
         m > 0 -> "Resets in ${m}m"
         else -> "Resetting soon..."
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Mode switching (Claude-centric <-> ChatGPT-centric)
-// ---------------------------------------------------------------------------
-
-@Composable
-private fun PrimaryProviderHeader(
-    primaryMode: String,
-    onModeChange: (String) -> Unit
-) {
-    val isChatGpt = primaryMode == AppPreferences.MODE_CHATGPT
-    val accent = if (isChatGpt) CodexGreen else ClaudePurpleLight
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 2.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = if (isChatGpt) "ChatGPT" else "Claude",
-            color = accent,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Bold
-        )
-
-        ModeSwitch(
-            primaryMode = primaryMode,
-            onModeChange = onModeChange
-        )
-    }
-}
-
-@Composable
-private fun ModeSwitch(
-    primaryMode: String,
-    onModeChange: (String) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(ExtendedTheme.colors.cardBackground)
-            .padding(3.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        ModeSwitchDot(
-            label = "Claude",
-            selected = primaryMode != AppPreferences.MODE_CHATGPT,
-            accent = ClaudePurpleLight,
-            onClick = { onModeChange(AppPreferences.MODE_CLAUDE) }
-        )
-        ModeSwitchDot(
-            label = "ChatGPT",
-            selected = primaryMode == AppPreferences.MODE_CHATGPT,
-            accent = CodexGreen,
-            onClick = { onModeChange(AppPreferences.MODE_CHATGPT) }
-        )
-    }
-}
-
-/** Unlabeled on purpose - the header next to it already names the active provider. */
-@Composable
-private fun ModeSwitchDot(
-    label: String,
-    selected: Boolean,
-    accent: Color,
-    onClick: () -> Unit
-) {
-    val mutedColor = ExtendedTheme.colors.textMuted
-    val dotColor by animateColorAsState(
-        targetValue = if (selected) accent else mutedColor.copy(alpha = 0.45f),
-        animationSpec = tween(durationMillis = 250),
-        label = "mode_dot_$label"
-    )
-    val background by animateColorAsState(
-        targetValue = if (selected) accent.copy(alpha = 0.16f) else Color.Transparent,
-        animationSpec = tween(durationMillis = 250),
-        label = "mode_dot_bg_$label"
-    )
-
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(9.dp))
-            .background(background)
-            .clickable(onClickLabel = "Show $label usage first", onClick = onClick)
-            .size(width = 32.dp, height = 26.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Box(
-            modifier = Modifier
-                .size(if (selected) 8.dp else 7.dp)
-                .clip(CircleShape)
-                .background(dotColor)
-        )
     }
 }
 
