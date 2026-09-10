@@ -119,10 +119,6 @@ class UsageViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun onManualLogin(sessionKey: String) {
-        onLoginComplete(sessionKey)
-    }
-
     fun onAppForeground() {
         isAppInForeground = true
         // ChatGPT-only users have no Claude data, but still need the refresh loop
