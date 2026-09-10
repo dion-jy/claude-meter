@@ -100,6 +100,7 @@ fun ForecastScreen(
     val weekStartMs = weekEndMs - weekDurationMs
     val totalWeekMs = weekDurationMs.toDouble()
     val elapsedMs = (now.toEpochMilli() - weekStartMs).coerceAtLeast(0)
+    val elapsedDays = elapsedMs / (1000.0 * 60 * 60 * 24)
 
     // Swipe-back gesture
     val coroutineScope = rememberCoroutineScope()
@@ -144,11 +145,21 @@ fun ForecastScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        text = "Weekly Usage Forecast",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 20.sp
-                    )
+                    // The elapsed day belongs to the whole screen, not to any
+                    // one series, so it rides with the title instead of
+                    // sitting alone above the per-series rows
+                    Column {
+                        Text(
+                            text = "Weekly Usage Forecast",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp
+                        )
+                        Text(
+                            text = "Day ${String.format("%.1f", elapsedDays)} / 7",
+                            color = ExtendedTheme.colors.textMuted,
+                            fontSize = 11.sp
+                        )
+                    }
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -414,13 +425,6 @@ fun ForecastScreen(
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Row(modifier = Modifier.fillMaxWidth()) {
-                        Text(
-                            text = "Day ${String.format("%.1f", elapsedMs / (1000.0 * 60 * 60 * 24))} / 7",
-                            color = ExtendedTheme.colors.textMuted,
-                            fontSize = 11.sp
-                        )
-                    }
                     // Same grouping and order as the chips above
                     visibleSeries.groupBy { it.provider }.forEach { (provider, group) ->
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
