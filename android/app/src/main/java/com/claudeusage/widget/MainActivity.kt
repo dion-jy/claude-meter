@@ -153,21 +153,37 @@ class MainActivity : ComponentActivity() {
                     }
                     Screen.Settings -> {
                         BackHandler { currentScreen = Screen.Usage }
-                        // One toggle per metric the server currently reports,
-                        // plus the app-level Codex toggle
+                        // Only what the current mode can actually hide. The
+                        // primary provider is the screen, so it has no toggle;
+                        // the Claude per-model metrics only render in Claude mode.
                         val usageData = (uiState as? UiState.Success)?.data
                         val availableToggles = buildList {
-                            usageData?.extraMetrics?.forEach { labeled ->
+                            if (primaryMode == AppPreferences.MODE_CHATGPT) {
                                 add(
                                     MetricToggle(
-                                        labeled.key,
-                                        labeled.label,
-                                        labeled.key !in hiddenMetrics
+                                        "claude_usage",
+                                        "Claude Usage",
+                                        "claude_usage" !in hiddenMetrics
+                                    )
+                                )
+                            } else {
+                                usageData?.extraMetrics?.forEach { labeled ->
+                                    add(
+                                        MetricToggle(
+                                            labeled.key,
+                                            labeled.label,
+                                            labeled.key !in hiddenMetrics
+                                        )
+                                    )
+                                }
+                                add(
+                                    MetricToggle(
+                                        "codex_usage",
+                                        "Codex Usage",
+                                        "codex_usage" !in hiddenMetrics
                                     )
                                 )
                             }
-                            add(MetricToggle("codex_usage", "Codex Usage", "codex_usage" !in hiddenMetrics))
-                            add(MetricToggle("claude_usage", "Claude Usage", "claude_usage" !in hiddenMetrics))
                         }
 
                         SettingsScreen(
