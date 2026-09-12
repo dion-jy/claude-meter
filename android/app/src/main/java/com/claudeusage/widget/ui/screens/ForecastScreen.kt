@@ -331,6 +331,40 @@ fun ForecastScreen(
                             strokeWidth = 1.dp.toPx()
                         )
 
+                        // "Now" divider — everything to its left is recorded
+                        // history, everything to its right is projection, so
+                        // the solid/dashed split needs no legend to explain it
+                        val nowX = xAt(now.toEpochMilli())
+                        drawLine(
+                            color = TextMuted.copy(alpha = 0.5f),
+                            start = Offset(nowX, topPad),
+                            end = Offset(nowX, topPad + graphHeight),
+                            strokeWidth = 1.dp.toPx(),
+                            pathEffect = PathEffect.dashPathEffect(
+                                floatArrayOf(3.dp.toPx(), 3.dp.toPx())
+                            )
+                        )
+                        val nowLabel = textMeasurer.measure(
+                            text = AnnotatedString("NOW"),
+                            style = TextStyle(
+                                fontSize = 8.sp,
+                                color = TextMuted,
+                                letterSpacing = 0.6.sp
+                            )
+                        )
+                        // Sit left of the divider, unless the week has barely
+                        // started and there is no room there
+                        val gap = 4.dp.toPx()
+                        val nowLabelX = if (nowX - gap - nowLabel.size.width < leftPad) {
+                            nowX + gap
+                        } else {
+                            nowX - gap - nowLabel.size.width
+                        }
+                        drawText(
+                            textLayoutResult = nowLabel,
+                            topLeft = Offset(nowLabelX, topPad + 2.dp.toPx())
+                        )
+
                         // Sub-limits first so the thicker total line sits on top
                         for (series in visibleSeries.sortedBy { if (it.isTotal) 1 else 0 }) {
                             // History polyline (only current week data)
@@ -426,11 +460,13 @@ fun ForecastScreen(
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    StatHeaderRow()
-                    // Same grouping and order as the chips above
-                    visibleSeries.groupBy { it.provider }.forEach { (provider, group) ->
+                    // Same grouping and order as the chips above. The column
+                    // names ride on the first group's label rather than
+                    // taking a row of their own above an empty gutter.
+                    visibleSeries.groupBy { it.provider }.entries.forEachIndexed { index, entry ->
+                        val (provider, group) = entry
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            GroupLabel(provider)
+                            GroupLabel(provider, showColumns = index == 0)
                             group.forEach { series ->
                                 SeriesStatRow(
                                     series = series,
@@ -444,24 +480,9 @@ fun ForecastScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Legend
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = ExtendedTheme.colors.cardBackground),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    LegendItem(color = ExtendedTheme.colors.textSecondary, label = "Actual usage (per limit color)")
-                    Spacer(modifier = Modifier.height(8.dp))
-                    LegendItem(color = ExtendedTheme.colors.textSecondary.copy(alpha = 0.6f), label = "Projected usage", dashed = true)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    LegendItem(color = StatusCritical.copy(alpha = 0.15f), label = "Danger zone (>80%)")
-                    Spacer(modifier = Modifier.height(8.dp))
-                    LegendItem(color = StatusCritical, label = "Projected depletion point")
-                }
-            }
+            // No legend card: the chart says it itself. The NOW divider
+            // splits recorded from projected, the tinted band marks the
+            // danger zone, and the colored dots are echoed by the stat rows.
 
             // Banner Ad
             Spacer(modifier = Modifier.height(16.dp))
@@ -578,14 +599,25 @@ private fun buildWeeklySeries(
 }
 
 @Composable
-private fun GroupLabel(provider: String) {
-    Text(
-        text = provider.uppercase(),
-        color = ExtendedTheme.colors.textMuted,
-        fontSize = 10.sp,
-        fontWeight = FontWeight.Medium,
-        letterSpacing = 1.sp
-    )
+private fun GroupLabel(provider: String, showColumns: Boolean = false) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = provider.uppercase(),
+            color = ExtendedTheme.colors.textMuted,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Medium,
+            letterSpacing = 1.sp,
+            modifier = Modifier.weight(1f)
+        )
+        if (showColumns) {
+            StatColumnLabel("USED", COL_USED)
+            StatColumnLabel("%/H", COL_BURN)
+            StatColumnLabel("LEFT", COL_DEPLETES)
+        }
+    }
 }
 
 @Composable
@@ -653,20 +685,6 @@ private val COL_USED = 52.dp
 private val COL_BURN = 50.dp
 private val COL_DEPLETES = 50.dp
 
-/** Names the three figure columns once, above the whole list. */
-@Composable
-private fun StatHeaderRow() {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Spacer(modifier = Modifier.weight(1f))
-        StatColumnLabel("USED", COL_USED)
-        StatColumnLabel("%/H", COL_BURN)
-        StatColumnLabel("LEFT", COL_DEPLETES)
-    }
-}
-
 @Composable
 private fun StatColumnLabel(text: String, width: androidx.compose.ui.unit.Dp) {
     Text(
@@ -678,41 +696,6 @@ private fun StatColumnLabel(text: String, width: androidx.compose.ui.unit.Dp) {
         textAlign = TextAlign.End,
         modifier = Modifier.width(width)
     )
-}
-
-@Composable
-private fun LegendItem(
-    color: Color,
-    label: String,
-    dashed: Boolean = false
-) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        if (dashed) {
-            Canvas(modifier = Modifier.size(16.dp, 3.dp)) {
-                drawLine(
-                    color = color,
-                    start = Offset(0f, size.height / 2),
-                    end = Offset(size.width, size.height / 2),
-                    strokeWidth = 2.dp.toPx(),
-                    pathEffect = PathEffect.dashPathEffect(
-                        floatArrayOf(4.dp.toPx(), 3.dp.toPx())
-                    )
-                )
-            }
-        } else {
-            Box(
-                modifier = Modifier
-                    .size(10.dp)
-                    .background(color, CircleShape)
-            )
-        }
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = label,
-            color = ExtendedTheme.colors.textSecondary,
-            fontSize = 12.sp
-        )
-    }
 }
 
 private fun DrawScope.drawDashedLine(
