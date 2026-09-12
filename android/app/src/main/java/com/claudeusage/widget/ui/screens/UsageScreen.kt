@@ -31,6 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.claudeusage.widget.data.local.AppPreferences
 import com.claudeusage.widget.data.model.CodexUsageData
 import com.claudeusage.widget.data.model.ExtraUsageInfo
 import com.claudeusage.widget.data.model.UsageData
@@ -417,7 +418,7 @@ private fun UsageContent(
         }
 
         // Codex usage section (toggled by settings)
-        if ("codex_usage" !in hiddenMetrics) {
+        if (AppPreferences.CODEX_METRIC_KEY !in hiddenMetrics) {
             Spacer(modifier = Modifier.height(20.dp))
             CodexSection(
                 codexState = codexState,

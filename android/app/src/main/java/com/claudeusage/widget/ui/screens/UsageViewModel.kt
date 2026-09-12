@@ -67,8 +67,8 @@ class UsageViewModel(application: Application) : AndroidViewModel(application) {
     private val _lastUpdated = MutableStateFlow<String?>(null)
     val lastUpdated: StateFlow<String?> = _lastUpdated.asStateFlow()
 
-    private val _usageHistory = MutableStateFlow<List<UsageHistoryEntry>>(emptyList())
-    val usageHistory: StateFlow<List<UsageHistoryEntry>> = _usageHistory.asStateFlow()
+    private val _usageHistory = MutableStateFlow<Map<String, List<UsageHistoryEntry>>>(emptyMap())
+    val usageHistory: StateFlow<Map<String, List<UsageHistoryEntry>>> = _usageHistory.asStateFlow()
 
     private val _codexState = MutableStateFlow<CodexUiState>(CodexUiState.NotConnected)
     val codexState: StateFlow<CodexUiState> = _codexState.asStateFlow()
@@ -83,7 +83,7 @@ class UsageViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         createCoachNotificationChannel()
-        _usageHistory.value = historyStore.getHistory()
+        _usageHistory.value = historyStore.getAllHistory()
         checkCredentialsAndLoad()
         checkCodexCredentials()
     }
@@ -199,6 +199,7 @@ class UsageViewModel(application: Application) : AndroidViewModel(application) {
         result.fold(
             onSuccess = { data ->
                 _codexState.value = CodexUiState.Connected(data)
+                recordCodexHistory(data)
                 // Also merge into main UiState if Claude is already loaded
                 val current = _uiState.value
                 if (current is UiState.Success) {
@@ -386,8 +387,9 @@ class UsageViewModel(application: Application) : AndroidViewModel(application) {
                 "Fresh weekly capacity — let's make this week count",
                 COACH_WEEKLY_RESET_ID
             )
-            historyStore.clearHistory()
-            _usageHistory.value = emptyList()
+            // Only Claude series reset here; Codex has its own weekly window
+            historyStore.clearSeriesWhere { it != UsageHistoryStore.SERIES_CODEX_WEEKLY }
+            _usageHistory.value = historyStore.getAllHistory()
         }
 
         // Per-model resets (seven_day_sonnet, seven_day_fable, ...)
@@ -407,9 +409,26 @@ class UsageViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun recordUsageHistory(data: UsageData) {
-        val weeklyUtil = data.sevenDay?.utilization ?: return
-        historyStore.addEntry(System.currentTimeMillis(), weeklyUtil)
-        _usageHistory.value = historyStore.getHistory()
+        val values = buildMap {
+            data.sevenDay?.let { put(UsageHistoryStore.SERIES_WEEKLY_ALL, it.utilization) }
+            // Per-model weekly limits (seven_day_fable, limits_fable, ...)
+            data.dynamicMetrics
+                .filter { it.key.startsWith("seven_day_") || it.label.endsWith("(7d)") }
+                .forEach { put(it.key, it.metric.utilization) }
+        }
+        if (values.isEmpty()) return
+        historyStore.addEntries(System.currentTimeMillis(), values)
+        _usageHistory.value = historyStore.getAllHistory()
+    }
+
+    private fun recordCodexHistory(data: CodexUsageData) {
+        val weekly = listOfNotNull(data.primaryWindow, data.secondaryWindow)
+            .firstOrNull { it.windowLabel == "weekly" } ?: return
+        historyStore.addEntries(
+            System.currentTimeMillis(),
+            mapOf(UsageHistoryStore.SERIES_CODEX_WEEKLY to weekly.usedPercent)
+        )
+        _usageHistory.value = historyStore.getAllHistory()
     }
 
     private fun createCoachNotificationChannel() {
