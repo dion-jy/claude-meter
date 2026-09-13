@@ -161,11 +161,12 @@ class MainActivity : ComponentActivity() {
                         val usageData = (uiState as? UiState.Success)?.data
                         val availableToggles = buildList {
                             if (primaryMode == AppPreferences.MODE_CHATGPT) {
+                                val claudeKey = AppPreferences.CLAUDE_METRIC_KEY
                                 add(
                                     MetricToggle(
-                                        "claude_usage",
+                                        claudeKey,
                                         "Claude Usage",
-                                        "claude_usage" !in hiddenMetrics
+                                        claudeKey !in hiddenMetrics
                                     )
                                 )
                             } else {
@@ -308,6 +309,18 @@ class MainActivity : ComponentActivity() {
         if (mode == primaryMode) return
         primaryMode = mode
         appPreferences.primaryMode = mode
+        // The primary provider is the screen, so it must not stay hidden: a key
+        // switched off in the other mode would otherwise keep it off the
+        // forecast graph with no toggle left to switch it back on.
+        val primaryKey = if (mode == AppPreferences.MODE_CHATGPT) {
+            AppPreferences.CODEX_METRIC_KEY
+        } else {
+            AppPreferences.CLAUDE_METRIC_KEY
+        }
+        if (primaryKey in hiddenMetrics) {
+            hiddenMetrics = hiddenMetrics - primaryKey
+            appPreferences.hiddenMetricKeys = hiddenMetrics
+        }
         // Widget and notification follow the primary provider
         try {
             UsageWidgetReceiver.updateWidget(applicationContext)

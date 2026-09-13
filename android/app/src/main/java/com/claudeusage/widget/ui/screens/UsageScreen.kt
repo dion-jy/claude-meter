@@ -1020,7 +1020,7 @@ private fun ChatGptContent(
         }
 
         // Claude, demoted to the secondary slot
-        if ("claude_usage" !in hiddenMetrics) {
+        if (AppPreferences.CLAUDE_METRIC_KEY !in hiddenMetrics) {
             Spacer(modifier = Modifier.height(20.dp))
             ClaudeSecondaryCard(
                 claudeState = claudeState,

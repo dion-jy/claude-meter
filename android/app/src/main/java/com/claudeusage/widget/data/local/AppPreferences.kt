@@ -79,6 +79,7 @@ class AppPreferences(context: Context) {
          * screen that honours metric visibility shares this constant.
          */
         const val CODEX_METRIC_KEY = "codex_usage"
+        const val CLAUDE_METRIC_KEY = "claude_usage"
 
         const val THEME_DARK = "dark"
         const val THEME_LIGHT = "light"
