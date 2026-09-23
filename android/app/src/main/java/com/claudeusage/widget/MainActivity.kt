@@ -121,6 +121,8 @@ class MainActivity : ComponentActivity() {
                 val lastUpdated by viewModel.lastUpdated.collectAsState()
                 val usageHistory by viewModel.usageHistory.collectAsState()
                 val codexState by viewModel.codexState.collectAsState()
+                val claudeAccounts by viewModel.claudeAccounts.collectAsState()
+                val codexAccounts by viewModel.codexAccounts.collectAsState()
 
                 when (currentScreen) {
                     Screen.Usage -> {
@@ -134,7 +136,10 @@ class MainActivity : ComponentActivity() {
                             onLogout = {
                                 interstitialAdManager.showThen(this@MainActivity) {
                                     viewModel.logout()
-                                    UsageUpdateScheduler.cancel(applicationContext)
+                                    // Keep background updates while another saved account remains
+                                    if (viewModel.claudeAccounts.value.accounts.isEmpty()) {
+                                        UsageUpdateScheduler.cancel(applicationContext)
+                                    }
                                 }
                             },
                             onLoginClick = { launchLogin() },
@@ -148,7 +153,11 @@ class MainActivity : ComponentActivity() {
                                 interstitialAdManager.showThen(this@MainActivity) {
                                     viewModel.logoutCodex()
                                 }
-                            }
+                            },
+                            claudeAccounts = claudeAccounts,
+                            onSwitchAccount = viewModel::switchClaudeAccount,
+                            codexAccounts = codexAccounts,
+                            onSwitchCodexAccount = viewModel::switchCodexAccount
                         )
                     }
                     Screen.Settings -> {

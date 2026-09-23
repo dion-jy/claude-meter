@@ -85,7 +85,8 @@ class CodexUsageRepository {
         throw lastException ?: IOException("Request failed after retries.")
     }
 
-    suspend fun fetchAccessToken(cookies: String): Result<String> =
+    /** Exchanges ChatGPT session cookies for an access token and the login email. */
+    suspend fun fetchSession(cookies: String): Result<CodexSession> =
         withContext(Dispatchers.IO) {
             try {
                 val request = Request.Builder()
@@ -109,8 +110,9 @@ class CodexUsageRepository {
                     else -> {
                         val json = JSONObject(body)
                         val accessToken = json.optString("accessToken", "")
+                        val email = json.optJSONObject("user")?.optString("email").orEmpty()
                         if (accessToken.isNotBlank()) {
-                            Result.success(accessToken)
+                            Result.success(CodexSession(accessToken, email))
                         } else {
                             Result.failure(IOException("No access token in session response."))
                         }
@@ -133,3 +135,8 @@ class CodexUsageRepository {
         private const val INITIAL_BACKOFF_MS = 2000L
     }
 }
+
+data class CodexSession(
+    val accessToken: String,
+    val email: String
+)
