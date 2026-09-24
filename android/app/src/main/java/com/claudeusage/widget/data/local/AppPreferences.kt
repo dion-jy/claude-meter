@@ -47,6 +47,11 @@ class AppPreferences(context: Context) {
         get() = prefs.getString(KEY_THEME_MODE, THEME_DARK) ?: THEME_DARK
         set(value) = prefs.edit().putString(KEY_THEME_MODE, value).apply()
 
+    /** Set once the user has seen (dismissed or acted on) the account-switcher hint. */
+    var accountHintDismissed: Boolean
+        get() = prefs.getBoolean(KEY_ACCOUNT_HINT_DISMISSED, false)
+        set(value) = prefs.edit().putBoolean(KEY_ACCOUNT_HINT_DISMISSED, value).apply()
+
     var coachEnabled: Boolean
         get() = prefs.getBoolean(KEY_COACH_ENABLED, true)
         set(value) = prefs.edit().putBoolean(KEY_COACH_ENABLED, value).apply()
@@ -62,6 +67,7 @@ class AppPreferences(context: Context) {
         private const val KEY_SHOW_CODEX_USAGE = "show_codex_usage"
         private const val KEY_THEME_MODE = "theme_mode"
         private const val KEY_COACH_ENABLED = "coach_enabled"
+        private const val KEY_ACCOUNT_HINT_DISMISSED = "account_hint_dismissed"
 
         /**
          * App-level toggle key for the Codex/GPT card. Unlike the other

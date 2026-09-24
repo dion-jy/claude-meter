@@ -192,6 +192,30 @@ class UsageRepository {
             }
         }
 
+    /**
+     * Best-effort label for the account switcher: the login email, or the
+     * organization name when the account endpoint doesn't report one.
+     */
+    suspend fun fetchAccountLabel(sessionKey: String): String? =
+        withContext(Dispatchers.IO) {
+            val email = runCatching {
+                fetchJson("$BASE_URL/api/account", sessionKey)
+                    .optString("email_address")
+                    .takeIf { it.isNotBlank() }
+            }.getOrNull()
+            email ?: runCatching {
+                val request = Request.Builder()
+                    .url("$BASE_URL/api/organizations")
+                    .addHeader("Cookie", "sessionKey=$sessionKey")
+                    .addHeader("User-Agent", USER_AGENT)
+                    .addHeader("Accept", "application/json")
+                    .addHeader("Referer", BASE_URL)
+                    .build()
+                val body = client.newCall(request).execute().use { it.body?.string() }.orEmpty()
+                JSONArray(body).getJSONObject(0).optString("name").takeIf { it.isNotBlank() }
+            }.getOrNull()
+        }
+
     fun cancelPendingRequests() {
         client.dispatcher.cancelAll()
     }

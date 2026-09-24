@@ -21,6 +21,7 @@ Squeeze your productivity. Monitor your Claude.ai usage in real-time.
 - **Visual Progress Bars** - Clean, color-coded indicators (normal / warning / critical)
 - **Background Updates** - Automatic refresh every 5 minutes via WorkManager
 - **Push Notifications** - Get alerted when usage hits critical thresholds
+- **Multiple Accounts** - Save several Claude and ChatGPT logins and switch between them from the header
 - **Per-model Breakdown** - Track Sonnet, Opus, Cowork, and OAuth Apps usage separately
 - **Overage & Prepaid Tracking** - Monitor extra usage spending and prepaid credits
 - **Secure** - Credentials stored locally with Android EncryptedSharedPreferences
