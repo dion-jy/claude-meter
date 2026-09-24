@@ -9,7 +9,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,6 +24,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -51,6 +55,14 @@ fun SettingsScreen(
     themeMode: String,
     onThemeModeChange: (String) -> Unit,
     onPrivacyPolicyClick: () -> Unit = {},
+    claudeAccounts: AccountList = AccountList(),
+    onSwitchClaudeAccount: (String) -> Unit = {},
+    onAddClaudeAccount: () -> Unit = {},
+    onRemoveClaudeAccount: (String) -> Unit = {},
+    codexAccounts: AccountList = AccountList(),
+    onSwitchCodexAccount: (String) -> Unit = {},
+    onAddCodexAccount: () -> Unit = {},
+    onRemoveCodexAccount: (String) -> Unit = {},
     onBack: () -> Unit
 ) {
     val uriHandler = LocalUriHandler.current
@@ -126,6 +138,38 @@ fun SettingsScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 8.dp)
         ) {
+            // Accounts section
+            SectionLabel("Accounts")
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = ExtendedTheme.colors.cardBackground),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column {
+                    AccountGroup(
+                        title = "Claude",
+                        accounts = claudeAccounts,
+                        accentColor = ClaudePurpleLight,
+                        addLabel = "Add Claude account",
+                        onSwitch = onSwitchClaudeAccount,
+                        onAdd = onAddClaudeAccount,
+                        onRemove = onRemoveClaudeAccount
+                    )
+                    SettingsDivider()
+                    AccountGroup(
+                        title = "ChatGPT",
+                        accounts = codexAccounts,
+                        accentColor = CodexGreen,
+                        addLabel = "Add ChatGPT account",
+                        onSwitch = onSwitchCodexAccount,
+                        onAdd = onAddCodexAccount,
+                        onRemove = onRemoveCodexAccount
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
             // Notification section
             SectionLabel("Notification")
             Card(
@@ -273,6 +317,134 @@ fun SettingsScreen(
 
     } // Box
 
+}
+
+/**
+ * One service's saved logins: tap a row to switch to it, the cross removes it
+ * (after a confirmation), and the last row logs in to another account.
+ */
+@Composable
+private fun AccountGroup(
+    title: String,
+    accounts: AccountList,
+    accentColor: Color,
+    addLabel: String,
+    onSwitch: (String) -> Unit,
+    onAdd: () -> Unit,
+    onRemove: (String) -> Unit
+) {
+    var pendingRemoval by remember { mutableStateOf<AccountSummary?>(null) }
+
+    pendingRemoval?.let { account ->
+        val label = accounts.labelOf(account)
+        val isActive = account.id == accounts.activeId
+        AlertDialog(
+            onDismissRequest = { pendingRemoval = null },
+            title = { Text("Remove account", fontWeight = FontWeight.Bold) },
+            text = {
+                Text(
+                    buildString {
+                        append("Remove $label from Claude Meter?")
+                        if (isActive && accounts.accounts.size > 1) {
+                            append(" You'll switch to your next saved account.")
+                        }
+                        append(" You can log in again anytime to add it back.")
+                    }
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    pendingRemoval = null
+                    onRemove(account.id)
+                }) {
+                    Text("Remove", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingRemoval = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    Column(modifier = Modifier.padding(vertical = 4.dp)) {
+        Text(
+            text = title,
+            color = accentColor,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(start = 16.dp, top = 10.dp, bottom = 2.dp)
+        )
+        accounts.accounts.forEach { account ->
+            val isActive = account.id == accounts.activeId
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(enabled = !isActive) { onSwitch(account.id) }
+                    .padding(start = 16.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(modifier = Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+                    if (isActive) {
+                        Icon(
+                            Icons.Default.Check,
+                            contentDescription = "Active account",
+                            tint = accentColor,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = accounts.labelOf(account),
+                        color = MaterialTheme.colorScheme.onBackground,
+                        fontSize = 15.sp,
+                        fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = if (isActive) "In use" else "Tap to switch",
+                        color = ExtendedTheme.colors.textMuted,
+                        fontSize = 12.sp
+                    )
+                }
+                IconButton(onClick = { pendingRemoval = account }) {
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = "Remove ${accounts.labelOf(account)}",
+                        tint = ExtendedTheme.colors.textMuted,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onAdd)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(modifier = Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+                Icon(
+                    Icons.Default.Add,
+                    contentDescription = null,
+                    tint = accentColor,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = addLabel,
+                color = accentColor,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
 }
 
 @Composable

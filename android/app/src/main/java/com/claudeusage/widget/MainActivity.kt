@@ -44,6 +44,7 @@ class MainActivity : ComponentActivity() {
     private var themeMode by mutableStateOf(AppPreferences.THEME_DARK)
     private var hiddenMetrics by mutableStateOf<Set<String>>(emptySet())
     private var hiddenGraphSeries by mutableStateOf<Set<String>>(emptySet())
+    private var showAccountHint by mutableStateOf(false)
     private val interstitialAdManager = InterstitialAdManager()
 
     private val loginLauncher = registerForActivityResult(
@@ -93,6 +94,7 @@ class MainActivity : ComponentActivity() {
         // Load metric visibility from preferences
         hiddenMetrics = appPreferences.hiddenMetricKeys
         hiddenGraphSeries = appPreferences.hiddenGraphSeries
+        showAccountHint = !appPreferences.accountHintDismissed
 
         // Request notification permission on first launch (Android 13+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -136,10 +138,7 @@ class MainActivity : ComponentActivity() {
                             onLogout = {
                                 interstitialAdManager.showThen(this@MainActivity) {
                                     viewModel.logout()
-                                    // Keep background updates while another saved account remains
-                                    if (viewModel.claudeAccounts.value.accounts.isEmpty()) {
-                                        UsageUpdateScheduler.cancel(applicationContext)
-                                    }
+                                    cancelUpdatesIfNoClaudeAccount()
                                 }
                             },
                             onLoginClick = { launchLogin() },
@@ -157,7 +156,9 @@ class MainActivity : ComponentActivity() {
                             claudeAccounts = claudeAccounts,
                             onSwitchAccount = viewModel::switchClaudeAccount,
                             codexAccounts = codexAccounts,
-                            onSwitchCodexAccount = viewModel::switchCodexAccount
+                            onSwitchCodexAccount = viewModel::switchCodexAccount,
+                            showAccountHint = showAccountHint,
+                            onDismissAccountHint = ::dismissAccountHint
                         )
                     }
                     Screen.Settings -> {
@@ -199,6 +200,26 @@ class MainActivity : ComponentActivity() {
                                 appPreferences.themeMode = mode
                             },
                             onPrivacyPolicyClick = { currentScreen = Screen.PrivacyPolicy },
+                            claudeAccounts = claudeAccounts,
+                            onSwitchClaudeAccount = viewModel::switchClaudeAccount,
+                            onAddClaudeAccount = { launchLogin() },
+                            onRemoveClaudeAccount = { id ->
+                                interstitialAdManager.showThen(this@MainActivity) {
+                                    viewModel.removeClaudeAccount(id)
+                                    if (cancelUpdatesIfNoClaudeAccount()) {
+                                        // Nothing left to show here; the usage screen offers login
+                                        currentScreen = Screen.Usage
+                                    }
+                                }
+                            },
+                            codexAccounts = codexAccounts,
+                            onSwitchCodexAccount = viewModel::switchCodexAccount,
+                            onAddCodexAccount = { launchCodexLogin() },
+                            onRemoveCodexAccount = { id ->
+                                interstitialAdManager.showThen(this@MainActivity) {
+                                    viewModel.removeCodexAccount(id)
+                                }
+                            },
                             onBack = { currentScreen = Screen.Usage }
                         )
                     }
@@ -248,6 +269,19 @@ class MainActivity : ComponentActivity() {
     override fun onPause() {
         super.onPause()
         viewModel.onAppBackground()
+    }
+
+    /** Stops background updates once no Claude account is left; returns true if it did. */
+    private fun cancelUpdatesIfNoClaudeAccount(): Boolean {
+        if (viewModel.claudeAccounts.value.accounts.isNotEmpty()) return false
+        UsageUpdateScheduler.cancel(applicationContext)
+        return true
+    }
+
+    private fun dismissAccountHint() {
+        if (!showAccountHint) return
+        showAccountHint = false
+        appPreferences.accountHintDismissed = true
     }
 
     private fun launchLogin() {

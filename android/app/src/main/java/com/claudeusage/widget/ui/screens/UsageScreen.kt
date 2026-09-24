@@ -40,11 +40,20 @@ import com.claudeusage.widget.data.local.AppPreferences
 import com.claudeusage.widget.data.model.CodexUsageData
 import com.claudeusage.widget.data.model.ExtraUsageInfo
 import com.claudeusage.widget.data.model.UsageData
+import com.claudeusage.widget.data.model.CoachNotification
+import com.claudeusage.widget.data.model.CoachSeverity
 import com.claudeusage.widget.ui.components.BannerAd
+import com.claudeusage.widget.ui.components.CoachBanner
 import com.claudeusage.widget.ui.components.UsageProgressBar
 import com.claudeusage.widget.ui.theme.*
 import java.time.Duration
 import java.time.Instant
+
+private val ACCOUNT_HINT = CoachNotification(
+    message = "New: tap your email at the top to switch accounts or add another " +
+        "Claude or ChatGPT account.",
+    severity = CoachSeverity.INFO
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -65,12 +74,15 @@ fun UsageScreen(
     claudeAccounts: AccountList = AccountList(),
     onSwitchAccount: (String) -> Unit = {},
     codexAccounts: AccountList = AccountList(),
-    onSwitchCodexAccount: (String) -> Unit = {}
+    onSwitchCodexAccount: (String) -> Unit = {},
+    showAccountHint: Boolean = false,
+    onDismissAccountHint: () -> Unit = {}
 ) {
     var showLogoutDialog by remember { mutableStateOf(false) }
+    val claudeMenuOpen = remember { mutableStateOf(false) }
 
     if (showLogoutDialog) {
-        val activeLabel = claudeAccounts.active?.let { accountLabel(claudeAccounts, it) }
+        val activeLabel = claudeAccounts.active?.let { claudeAccounts.labelOf(it) }
         AlertDialog(
             onDismissRequest = { showLogoutDialog = false },
             title = { Text("Logout", fontWeight = FontWeight.Bold) },
@@ -110,28 +122,30 @@ fun UsageScreen(
                             fontSize = 20.sp
                         )
                     } else {
-                        AccountSwitcher(
-                            accounts = claudeAccounts,
-                            accentColor = ClaudePurpleLight,
-                            addLabel = "Add Claude account",
-                            onSwitch = onSwitchAccount,
-                            onAdd = onLoginClick
-                        ) {
-                            Column {
+                        Column {
+                            Text(
+                                text = "Claude Meter",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 20.sp
+                            )
+                            // Email + arrow, like the ChatGPT card, so it reads as an account menu
+                            AccountSwitcher(
+                                accounts = claudeAccounts,
+                                accentColor = ClaudePurpleLight,
+                                addLabel = "Add Claude account",
+                                onSwitch = onSwitchAccount,
+                                onAdd = onLoginClick,
+                                expandedState = claudeMenuOpen,
+                                onOpen = onDismissAccountHint
+                            ) {
                                 Text(
-                                    text = "Claude Meter",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 20.sp
+                                    text = claudeAccounts.active?.let { claudeAccounts.labelOf(it) }
+                                        ?: "Choose account",
+                                    color = ExtendedTheme.colors.textMuted,
+                                    fontSize = 12.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
-                                claudeAccounts.active?.let {
-                                    Text(
-                                        text = accountLabel(claudeAccounts, it),
-                                        color = ExtendedTheme.colors.textMuted,
-                                        fontSize = 12.sp,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
                             }
                         }
                     }
@@ -203,7 +217,13 @@ fun UsageScreen(
                     onCodexLoginClick = onCodexLoginClick,
                     onCodexLogout = onCodexLogout,
                     codexAccounts = codexAccounts,
-                    onSwitchCodexAccount = onSwitchCodexAccount
+                    onSwitchCodexAccount = onSwitchCodexAccount,
+                    showAccountHint = showAccountHint && claudeAccounts.accounts.isNotEmpty(),
+                    onAccountHintClick = {
+                        onDismissAccountHint()
+                        claudeMenuOpen.value = true
+                    },
+                    onDismissAccountHint = onDismissAccountHint
                 )
                 is UiState.Error -> ErrorContent(
                     message = uiState.message,
@@ -418,7 +438,10 @@ private fun UsageContent(
     onCodexLoginClick: () -> Unit = {},
     onCodexLogout: () -> Unit = {},
     codexAccounts: AccountList = AccountList(),
-    onSwitchCodexAccount: (String) -> Unit = {}
+    onSwitchCodexAccount: (String) -> Unit = {},
+    showAccountHint: Boolean = false,
+    onAccountHintClick: () -> Unit = {},
+    onDismissAccountHint: () -> Unit = {}
 ) {
     val scrollState = rememberScrollState()
 
@@ -428,6 +451,14 @@ private fun UsageContent(
             .verticalScroll(scrollState)
             .padding(horizontal = 20.dp, vertical = 8.dp)
     ) {
+        // One-time pointer to the account menu for people updating from a single-account version
+        CoachBanner(
+            notification = if (showAccountHint) ACCOUNT_HINT else null,
+            onClick = onAccountHintClick,
+            onDismiss = onDismissAccountHint,
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
+
         // Main usage cards - always show even when null (after reset)
         val defaultMetric = com.claudeusage.widget.data.model.UsageMetric(0.0, null)
 
@@ -682,7 +713,7 @@ private fun CodexSection(
             onDismissRequest = { showDisconnectDialog = false },
             title = { Text("Disconnect Codex", fontWeight = FontWeight.Bold) },
             text = {
-                val activeLabel = codexAccounts.active?.let { accountLabel(codexAccounts, it) }
+                val activeLabel = codexAccounts.active?.let { codexAccounts.labelOf(it) }
                 Text(
                     if (activeLabel != null && codexAccounts.accounts.size > 1) {
                         "Disconnect $activeLabel? You'll switch to your next saved ChatGPT account."
@@ -749,7 +780,7 @@ private fun CodexSection(
                             onAdd = onCodexLoginClick
                         ) {
                             Text(
-                                text = accountLabel(codexAccounts, activeCodex),
+                                text = codexAccounts.labelOf(activeCodex),
                                 color = ExtendedTheme.colors.textMuted,
                                 fontSize = 11.sp,
                                 maxLines = 1,
@@ -828,10 +859,6 @@ private fun CodexSection(
     }
 }
 
-/** Label for the switcher: the saved email, or "Account N" when none is known. */
-private fun accountLabel(list: AccountList, account: AccountSummary): String =
-    account.label.ifBlank { "Account ${list.accounts.indexOf(account) + 1}" }
-
 /**
  * Shows [content] with a dropdown arrow; tapping it lists the saved
  * accounts (active one checked) plus an entry to log in to another one.
@@ -843,15 +870,20 @@ private fun AccountSwitcher(
     addLabel: String,
     onSwitch: (String) -> Unit,
     onAdd: () -> Unit,
+    expandedState: MutableState<Boolean> = remember { mutableStateOf(false) },
+    onOpen: () -> Unit = {},
     content: @Composable () -> Unit
 ) {
-    var expanded by remember { mutableStateOf(false) }
+    var expanded by expandedState
 
     Box {
         Row(
             modifier = Modifier
                 .clip(RoundedCornerShape(8.dp))
-                .clickable { expanded = true },
+                .clickable {
+                    expanded = true
+                    onOpen()
+                },
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(modifier = Modifier.weight(1f, fill = false)) { content() }
@@ -870,7 +902,7 @@ private fun AccountSwitcher(
                 DropdownMenuItem(
                     text = {
                         Text(
-                            text = accountLabel(accounts, account),
+                            text = accounts.labelOf(account),
                             fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Normal,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis

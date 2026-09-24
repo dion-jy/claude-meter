@@ -63,6 +63,10 @@ data class AccountList(
 ) {
     val active: AccountSummary?
         get() = accounts.firstOrNull { it.id == activeId }
+
+    /** Label for the switcher: the saved email, or "Account N" when none is known. */
+    fun labelOf(account: AccountSummary): String =
+        account.label.ifBlank { "Account ${accounts.indexOf(account) + 1}" }
 }
 
 class UsageViewModel(application: Application) : AndroidViewModel(application) {
@@ -189,6 +193,17 @@ class UsageViewModel(application: Application) : AndroidViewModel(application) {
             _uiState.value = UiState.LoginRequired
             UsageNotificationService.stop(getApplication())
         }
+    }
+
+    /** Removes a saved Claude account; removing the active one is the same as [logout]. */
+    fun removeClaudeAccount(id: String) {
+        if (id == credentialManager.activeAccountId) {
+            logout()
+            return
+        }
+        credentialManager.removeAccount(id)
+        historyStore.clearSeriesWhere(id) { it != UsageHistoryStore.SERIES_CODEX_WEEKLY }
+        refreshAccountLists()
     }
 
     fun switchClaudeAccount(id: String) {
@@ -326,6 +341,17 @@ class UsageViewModel(application: Application) : AndroidViewModel(application) {
         } else {
             _codexState.value = CodexUiState.NotConnected
         }
+    }
+
+    /** Removes a saved ChatGPT account; removing the active one is the same as [logoutCodex]. */
+    fun removeCodexAccount(id: String) {
+        if (id == codexCredentialManager.activeAccountId) {
+            logoutCodex()
+            return
+        }
+        codexCredentialManager.removeAccount(id)
+        historyStore.clearSeriesWhere(id) { it == UsageHistoryStore.SERIES_CODEX_WEEKLY }
+        refreshAccountLists()
     }
 
     fun switchCodexAccount(id: String) {
