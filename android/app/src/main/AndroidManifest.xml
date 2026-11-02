@@ -55,6 +55,14 @@
             android:name="com.google.android.gms.ads.APPLICATION_ID"
             android:value="ca-app-pub-8064366969131187~4988108225" />
 
+        <!-- Analytics counts accounts only: no Advertising ID, no ad signals -->
+        <meta-data
+            android:name="google_analytics_adid_collection_enabled"
+            android:value="false" />
+        <meta-data
+            android:name="google_analytics_default_allow_ad_personalization_signals"
+            android:value="false" />
+
         <!-- Home screen widget -->
         <receiver
             android:name=".widget.UsageWidgetReceiver"

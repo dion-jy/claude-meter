@@ -1,6 +1,7 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -11,8 +12,8 @@ android {
         applicationId = "com.claudeusage.widget"
         minSdk = 26
         targetSdk = 36
-        versionCode = 13
-        versionName = "1.7.0"
+        versionCode = 14
+        versionName = "1.7.1"
 
         vectorDrawables {
             useSupportLibrary = true
@@ -118,6 +119,10 @@ dependencies {
 
     // Google AdMob
     implementation("com.google.android.gms:play-services-ads:23.1.0")
+
+    // Firebase Analytics (account counts only)
+    implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
+    implementation("com.google.firebase:firebase-analytics")
 
     // Debug
     debugImplementation("androidx.compose.ui:ui-tooling")
