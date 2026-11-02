@@ -9,6 +9,7 @@ import android.os.Bundle
 import androidx.core.app.NotificationCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.FirebaseApp
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.claudeusage.widget.MainActivity
 import com.claudeusage.widget.R
@@ -113,7 +114,8 @@ class UsageViewModel(application: Application) : AndroidViewModel(application) {
     private var prevWeeklyUtil: Double? = null
     private var prevDynamicUtils: Map<String, Double> = emptyMap()
     private var lastCoachEvalTime: Long = 0L
-    private val analytics = FirebaseAnalytics.getInstance(application)
+    private val analytics = FirebaseApp.getApps(application).firstOrNull()
+        ?.let { FirebaseAnalytics.getInstance(application) }
 
     init {
         createCoachNotificationChannel()
@@ -264,8 +266,8 @@ class UsageViewModel(application: Application) : AndroidViewModel(application) {
             codexCredentialManager.getAccounts().map { it.toSummary() },
             codexCredentialManager.activeAccountId
         )
-        analytics.setUserProperty("claude_accounts", accountBucket(_claudeAccounts.value.accounts.size))
-        analytics.setUserProperty("codex_accounts", accountBucket(_codexAccounts.value.accounts.size))
+        analytics?.setUserProperty("claude_accounts", accountBucket(_claudeAccounts.value.accounts.size))
+        analytics?.setUserProperty("codex_accounts", accountBucket(_codexAccounts.value.accounts.size))
     }
 
     private fun accountBucket(count: Int) = if (count >= 3) "3+" else count.toString()
@@ -275,7 +277,7 @@ class UsageViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun logAccountEvent(name: String, service: String) {
-        analytics.logEvent(name, Bundle().apply { putString("service", service) })
+        analytics?.logEvent(name, Bundle().apply { putString("service", service) })
     }
 
     private fun reloadHistory() {
