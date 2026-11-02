@@ -1,6 +1,6 @@
 # Privacy Policy
 
-**Last updated: August 23, 2026**
+**Last updated: November 2, 2026**
 
 > 한국어 버전은 [PRIVACY_POLICY.ko.md](PRIVACY_POLICY.ko.md)를 참고하세요.
 
@@ -10,7 +10,7 @@ ClaudeMeter ("the App") is an open-source Android utility that displays your Cla
 
 ## Data Collection
 
-The App itself does **not** collect, store, or transmit any personal data to servers operated by the developer. However, the App includes the Google AdMob advertising SDK, which collects certain identifiers as described in the [Advertising](#advertising-google-admob) section below.
+The App itself does **not** collect, store, or transmit any personal data to servers operated by the developer. However, the App includes the Google AdMob advertising SDK and Firebase Analytics, which collect certain data as described in the [Advertising](#advertising-google-admob) and [Usage Analytics](#usage-analytics-firebase) sections below.
 
 ### What the App stores locally on your device:
 - **Claude session key**: Used to authenticate with the Claude.ai API. Stored in encrypted storage (Android EncryptedSharedPreferences, device-only).
@@ -20,7 +20,6 @@ The App itself does **not** collect, store, or transmit any personal data to ser
 - **Usage history**: Recent usage snapshots kept locally for the forecast feature.
 
 ### What the App does NOT do:
-- Does not collect analytics or telemetry
 - Does not share your Claude/ChatGPT credentials or usage data with third parties
 - Does not send your data to any server operated by the developer
 
@@ -39,6 +38,10 @@ This data is collected by Google, not by the developer, and is used for advertis
 
 You can limit ad personalization or delete/reset your Advertising ID at any time in your device settings under **Settings → Google → Ads** (or **Settings → Privacy → Ads**).
 
+## Usage Analytics (Firebase)
+
+The App uses Google Analytics for Firebase to count how many accounts are saved (as 0, 1, 2 or 3+) and when an account is added or switched. Firebase also collects an app instance ID, basic device and app information, and coarse location derived from your IP address. The App does not send your email, account names, credentials or Claude/ChatGPT usage data to Firebase, and does not link this data to your Advertising ID. See the [Google Privacy Policy](https://policies.google.com/privacy).
+
 ## Network Requests
 
 The App communicates with:
@@ -46,6 +49,7 @@ The App communicates with:
 - **`claude.ai`** — to fetch your usage metrics, spending limit info, and prepaid balance (e.g. `/api/organizations/{id}/usage`)
 - **`chatgpt.com`** (only if you enable Codex tracking) — to authenticate and fetch your Codex usage data
 - **Google ad servers** — to load and display AdMob ads
+- **Google Analytics for Firebase** — to send the counts described above
 
 No other network requests are made.
 
@@ -57,6 +61,7 @@ No other network requests are made.
 ## Third-Party Services
 
 - **Google AdMob** is used to display ads, as described above.
+- **Google Analytics for Firebase** is used to count saved accounts, as described above.
 - This App is **not affiliated with, endorsed by, or officially connected to Anthropic or OpenAI** in any way. It uses the same API endpoints that the Claude.ai and ChatGPT web interfaces use.
 
 ## Children's Privacy
