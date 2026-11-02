@@ -466,13 +466,15 @@ private fun UsageContent(
         // Main usage cards - always show even when null (after reset)
         val defaultMetric = com.claudeusage.widget.data.model.UsageMetric(0.0, null)
 
-        UsageCard(
-            title = "Current Session",
-            subtitle = "5-hour window",
-            metric = data.fiveHour ?: defaultMetric,
-            totalWindowHours = 5.0
-        )
-        Spacer(modifier = Modifier.height(12.dp))
+        if (data.hasSessionLimit) {
+            UsageCard(
+                title = "Current Session",
+                subtitle = "5-hour window",
+                metric = data.fiveHour ?: defaultMetric,
+                totalWindowHours = 5.0
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+        }
 
         UsageCard(
             title = "Weekly Limit",

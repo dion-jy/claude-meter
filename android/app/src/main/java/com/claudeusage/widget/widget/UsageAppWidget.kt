@@ -155,12 +155,14 @@ private fun UsageDataContent(data: UsageData) {
         Spacer(modifier = GlanceModifier.height(10.dp))
 
         // Session Card
-        UsageCard(
-            label = "Session (5h)",
-            metric = data.fiveHour
-        )
+        if (data.hasSessionLimit) {
+            UsageCard(
+                label = "Session (5h)",
+                metric = data.fiveHour
+            )
 
-        Spacer(modifier = GlanceModifier.height(6.dp))
+            Spacer(modifier = GlanceModifier.height(6.dp))
+        }
 
         // Weekly Card
         UsageCard(

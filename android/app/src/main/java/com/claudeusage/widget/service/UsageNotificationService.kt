@@ -11,6 +11,7 @@ import android.content.Intent
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
+import android.view.View
 import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import com.claudeusage.widget.MainActivity
@@ -123,6 +124,10 @@ class UsageNotificationService : Service() {
 
         fun buildUsageNotification(context: Context, data: UsageData): Notification {
             val remoteViews = RemoteViews(context.packageName, R.layout.notification_usage)
+
+            val sessionVisibility = if (data.hasSessionLimit) View.VISIBLE else View.GONE
+            remoteViews.setViewVisibility(R.id.row_5h, sessionVisibility)
+            remoteViews.setViewVisibility(R.id.spacer_5h, sessionVisibility)
 
             if (data.fiveHour != null) {
                 val progress = data.fiveHour.utilization.toInt().coerceIn(0, 100)
