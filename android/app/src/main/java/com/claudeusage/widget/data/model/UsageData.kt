@@ -30,8 +30,7 @@ data class UsageMetric(
             return try {
                 UsageMetric(
                     utilization = json.optDouble("utilization", 0.0),
-                    resetsAt = json.optString("resets_at", "").takeIf { it.isNotEmpty() }
-                        ?.let { Instant.parse(it) }
+                    resetsAt = UsageData.parseInstant(json.optString("resets_at", ""))
                 )
             } catch (e: Exception) {
                 null
@@ -161,7 +160,8 @@ data class UsageData(
             return null
         }
 
-        private fun parseInstant(value: String): Instant? {
+        // resets_at carries a +00:00 offset, which Instant.parse rejects before Java 12 (Android 13 and older)
+        internal fun parseInstant(value: String): Instant? {
             if (value.isEmpty()) return null
             return try {
                 Instant.parse(value)

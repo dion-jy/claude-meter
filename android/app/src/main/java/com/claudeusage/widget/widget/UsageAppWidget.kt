@@ -145,9 +145,9 @@ private fun UsageDataContent(data: UsageData) {
                 )
             )
             Spacer(modifier = GlanceModifier.defaultWeight())
-            val sessionUtil = data.fiveHour?.utilization ?: 0.0
+            val statusUtil = (if (data.hasSessionLimit) data.fiveHour else data.sevenDay)?.utilization ?: 0.0
             Text(
-                text = getStatusEmoji(sessionUtil),
+                text = getStatusEmoji(statusUtil),
                 style = TextStyle(fontSize = 12.sp)
             )
         }
