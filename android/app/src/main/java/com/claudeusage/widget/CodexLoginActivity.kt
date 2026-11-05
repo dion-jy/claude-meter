@@ -298,8 +298,10 @@ private fun CodexLoginWebViewScreen(
                                 debugLog = "WebView ${WebView.getCurrentWebViewPackage()?.versionName}\n${settings.userAgentString}"
                                 webChromeClient = object : WebChromeClient() {
                                     override fun onConsoleMessage(message: ConsoleMessage): Boolean {
-                                        if (message.messageLevel() == ConsoleMessage.MessageLevel.ERROR) {
-                                            debugLog += "\n• ${message.message()} (${message.sourceId().substringAfterLast('/')}:${message.lineNumber()})"
+                                        if (message.messageLevel() == ConsoleMessage.MessageLevel.ERROR ||
+                                            message.messageLevel() == ConsoleMessage.MessageLevel.WARNING
+                                        ) {
+                                            debugLog += "\n• ${message.messageLevel()} ${message.message().take(160)} (${message.sourceId().substringAfterLast('/')}:${message.lineNumber()})"
                                         }
                                         return false
                                     }
@@ -332,6 +334,15 @@ private fun CodexLoginWebViewScreen(
 
                                 override fun onPageFinished(view: WebView?, url: String?) {
                                     isLoading = false
+
+                                    if (BuildConfig.DEBUG && view != null) {
+                                        view.postDelayed({ view.evaluateJavascript(PROBE_START_JS, null) }, 3000)
+                                        view.postDelayed({
+                                            view.evaluateJavascript(PROBE_READ_JS) { result ->
+                                                debugLog += "\n• probe ${result?.trim('"')?.replace("\\\"", "\"")}"
+                                            }
+                                        }, 5000)
+                                    }
 
                                     val isAuthPage = url?.contains("/auth") == true
                                             || url?.contains("auth0.openai.com") == true
@@ -411,6 +422,32 @@ private fun CodexLoginWebViewScreen(
         }
     }
 }
+
+// Debug probes: count animation frames between the two calls, then dump page/viewport/animation state
+private const val PROBE_START_JS =
+    "window.__frames=0;(function f(){window.__frames++;requestAnimationFrame(f)})();"
+private const val PROBE_READ_JS = """
+    (function() {
+        var anims = document.getAnimations ? document.getAnimations() : [];
+        return JSON.stringify({
+            url: location.href,
+            vis: document.visibilityState,
+            focus: document.hasFocus(),
+            frames2s: window.__frames,
+            inner: innerWidth + 'x' + innerHeight,
+            vv: window.visualViewport ? Math.round(visualViewport.height) : null,
+            bodyH: document.body.scrollHeight,
+            buttons: document.querySelectorAll('button').length,
+            inputs: document.querySelectorAll('input').length,
+            anims: anims.length + ' ' + anims.slice(0, 4).map(function(a) {
+                return a.playState + '@' + Math.round(a.currentTime || 0);
+            }).join(','),
+            reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
+            pkc: typeof PublicKeyCredential,
+            text: document.body.innerText.replace(/\s+/g, ' ').slice(0, 120)
+        });
+    })();
+"""
 
 private fun checkForSessionCookies(onSessionCaptured: (String) -> Unit) {
     try {
