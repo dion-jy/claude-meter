@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "93972937182",
+    "project_id": "claude-meter-27624",
+    "storage_bucket": "claude-meter-27624.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:93972937182:android:dd285e6abfe0767e34454f",
+        "android_client_info": {
+          "package_name": "com.claudeusage.widget"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD5FI-jeEB7wScXAX98bxtnTiYq2z39E_I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
