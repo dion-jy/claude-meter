@@ -6,10 +6,16 @@ import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.webkit.ConsoleMessage
 import android.webkit.CookieManager
+import android.webkit.WebChromeClient
+import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Color
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -230,6 +236,8 @@ private fun CodexLoginWebViewScreen(
 ) {
     var isLoading by remember { mutableStateOf(true) }
     var showHint by remember { mutableStateOf(false) }
+    // ponytail: debug-only diagnostics for the blank ChatGPT login page; remove once the cause is fixed
+    var debugLog by remember { mutableStateOf("") }
 
     Scaffold(
         topBar = {
@@ -286,7 +294,35 @@ private fun CodexLoginWebViewScreen(
                                 cookieManager.flush()
                             } catch (_: Exception) {}
 
+                            if (BuildConfig.DEBUG) {
+                                debugLog = "WebView ${WebView.getCurrentWebViewPackage()?.versionName}\n${settings.userAgentString}"
+                                webChromeClient = object : WebChromeClient() {
+                                    override fun onConsoleMessage(message: ConsoleMessage): Boolean {
+                                        if (message.messageLevel() == ConsoleMessage.MessageLevel.ERROR) {
+                                            debugLog += "\n• ${message.message()} (${message.sourceId().substringAfterLast('/')}:${message.lineNumber()})"
+                                        }
+                                        return false
+                                    }
+                                }
+                            }
+
                             webViewClient = object : WebViewClient() {
+                                override fun onReceivedError(
+                                    view: WebView?,
+                                    request: WebResourceRequest?,
+                                    error: WebResourceError?
+                                ) {
+                                    if (BuildConfig.DEBUG) debugLog += "\n• load error ${error?.errorCode} ${error?.description} ${request?.url}"
+                                }
+
+                                override fun onReceivedHttpError(
+                                    view: WebView?,
+                                    request: WebResourceRequest?,
+                                    errorResponse: WebResourceResponse?
+                                ) {
+                                    if (BuildConfig.DEBUG) debugLog += "\n• HTTP ${errorResponse?.statusCode} ${request?.url}"
+                                }
+
                                 override fun shouldOverrideUrlLoading(
                                     view: WebView?,
                                     request: WebResourceRequest?
@@ -345,6 +381,20 @@ private fun CodexLoginWebViewScreen(
                         )
                     }
                 }
+            }
+
+            if (debugLog.isNotEmpty()) {
+                Text(
+                    text = debugLog,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.TopCenter)
+                        .background(Color(0xCC000000))
+                        .padding(8.dp),
+                    color = Color(0xFFFF8A80),
+                    fontSize = 10.sp,
+                    lineHeight = 12.sp
+                )
             }
 
             if (isLoading) {
