@@ -298,8 +298,9 @@ private fun CodexLoginWebViewScreen(
                                 debugLog = "WebView ${WebView.getCurrentWebViewPackage()?.versionName}\n${settings.userAgentString}"
                                 webChromeClient = object : WebChromeClient() {
                                     override fun onConsoleMessage(message: ConsoleMessage): Boolean {
-                                        if (message.messageLevel() == ConsoleMessage.MessageLevel.ERROR ||
-                                            message.messageLevel() == ConsoleMessage.MessageLevel.WARNING
+                                        if ((message.messageLevel() == ConsoleMessage.MessageLevel.ERROR ||
+                                                message.messageLevel() == ConsoleMessage.MessageLevel.WARNING) &&
+                                            "[Statsig]" !in message.message()
                                         ) {
                                             debugLog += "\n• ${message.messageLevel()} ${message.message().take(160)} (${message.sourceId().substringAfterLast('/')}:${message.lineNumber()})"
                                         }
@@ -339,7 +340,7 @@ private fun CodexLoginWebViewScreen(
                                         view.postDelayed({ view.evaluateJavascript(PROBE_START_JS, null) }, 3000)
                                         view.postDelayed({
                                             view.evaluateJavascript(PROBE_READ_JS) { result ->
-                                                debugLog += "\n• probe ${result?.trim('"')?.replace("\\\"", "\"")}"
+                                                debugLog = "probe ${result?.trim('"')?.replace("\\\"", "\"")}\n$debugLog"
                                             }
                                         }, 5000)
                                     }
