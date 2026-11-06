@@ -445,8 +445,32 @@ private const val PROBE_READ_JS = """
             }).join(','),
             reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
             pkc: typeof PublicKeyCredential,
-            text: document.body.innerText.replace(/\s+/g, ' ').slice(0, 120)
+            scroll: scrollY + '/' + document.documentElement.scrollHeight,
+            at: desc(document.elementFromPoint(180, 150)),
+            input: chain(document.querySelector('input'))
         });
+        function desc(el) {
+            if (!el) return null;
+            var r = el.getBoundingClientRect();
+            return el.tagName + '.' + String(el.className).slice(0, 25) +
+                ' [' + Math.round(r.x) + ',' + Math.round(r.y) + ' ' + Math.round(r.width) + 'x' + Math.round(r.height) + ']';
+        }
+        // Each ancestor of the element with any style that could hide or clip it
+        function chain(el) {
+            var out = [];
+            for (; el && el !== document.documentElement; el = el.parentElement) {
+                var s = getComputedStyle(el), odd = [];
+                if (s.opacity !== '1') odd.push('op' + s.opacity);
+                if (s.visibility !== 'visible') odd.push(s.visibility);
+                if (s.transform !== 'none') odd.push('tf' + s.transform.slice(0, 30));
+                if (s.overflow !== 'visible') odd.push('ov' + s.overflow);
+                if (s.position !== 'static') odd.push(s.position);
+                if (s.clipPath !== 'none') odd.push('clip');
+                if (s.contentVisibility && s.contentVisibility !== 'visible') odd.push('cv' + s.contentVisibility);
+                if (odd.length || out.length === 0) out.push(desc(el) + ' ' + odd.join(' '));
+            }
+            return out;
+        }
     })();
 """
 
