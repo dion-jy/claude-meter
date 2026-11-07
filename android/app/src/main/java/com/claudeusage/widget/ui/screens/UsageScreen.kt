@@ -1439,15 +1439,18 @@ private fun ClaudeSecondaryCard(
 
             when (claudeState) {
                 is UiState.Success -> {
-                    CompactUsageRow(
-                        label = "Session (5h)",
-                        usedPercent = claudeState.data.fiveHour?.utilization ?: 0.0,
-                        remaining = claudeState.data.fiveHour?.remainingDuration,
-                        accent = ClaudePurpleLight,
-                        accentLight = ClaudePurple,
-                        progressTrackColor = progressTrackColor
-                    )
-                    Spacer(modifier = Modifier.height(10.dp))
+                    // Same rule as the Claude-mode card: no session row on plans without a 5-hour limit
+                    if (claudeState.data.hasSessionLimit) {
+                        CompactUsageRow(
+                            label = "Session (5h)",
+                            usedPercent = claudeState.data.fiveHour?.utilization ?: 0.0,
+                            remaining = claudeState.data.fiveHour?.remainingDuration,
+                            accent = ClaudePurpleLight,
+                            accentLight = ClaudePurple,
+                            progressTrackColor = progressTrackColor
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+                    }
                     CompactUsageRow(
                         label = "Weekly (7d)",
                         usedPercent = claudeState.data.sevenDay?.utilization ?: 0.0,
