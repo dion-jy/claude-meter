@@ -96,13 +96,13 @@ fun PrivacyPolicyScreen(onBack: () -> Unit) {
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 20.dp, vertical = 8.dp)
             ) {
-                PolicyLastUpdated("Last updated: August 23, 2026")
+                PolicyLastUpdated("Last updated: November 2, 2026")
 
                 PolicySectionTitle("Overview")
                 PolicyBody("Claude Meter (\"the App\") is an Android utility that displays your Claude.ai (and optionally ChatGPT/Codex) usage information in real-time. This policy explains how the App handles your data.")
 
                 PolicySectionTitle("Data Collection")
-                PolicyBody("The App itself does not collect, store, or transmit any personal data to servers operated by the developer. However, the App includes the Google AdMob advertising SDK, which collects certain identifiers as described in the Advertising section below.")
+                PolicyBody("The App itself does not collect, store, or transmit any personal data to servers operated by the developer. However, the App includes the Google AdMob advertising SDK and Firebase Analytics, which collect certain data as described in the Advertising and Usage Analytics sections below.")
 
                 PolicySubTitle("What the App stores locally on your device:")
                 PolicyBullet("Claude session key — Used to authenticate with the Claude.ai API. Stored in encrypted storage (device-only).")
@@ -112,7 +112,6 @@ fun PrivacyPolicyScreen(onBack: () -> Unit) {
                 PolicyBullet("Usage history — Recent usage snapshots kept locally for the forecast feature.")
 
                 PolicySubTitle("What the App does NOT do:")
-                PolicyBullet("Does not collect analytics or telemetry")
                 PolicyBullet("Does not share your Claude/ChatGPT credentials or usage data with third parties")
                 PolicyBullet("Does not send your data to any server operated by the developer")
 
@@ -123,10 +122,14 @@ fun PrivacyPolicyScreen(onBack: () -> Unit) {
                 PolicyBullet("Ad interaction data (impressions, clicks) and diagnostic information")
                 PolicyBody("This data is collected by Google, not by the developer, and is used for advertising, ad measurement, and fraud prevention. See Google's Privacy Policy (policies.google.com/privacy) for details. You can limit ad personalization or delete/reset your Advertising ID at any time in your device settings under Settings > Google > Ads.")
 
+                PolicySectionTitle("Usage Analytics (Firebase)")
+                PolicyBody("The App uses Google Analytics for Firebase to count how many accounts are saved (as 0, 1, 2 or 3+) and when an account is added or switched. Firebase also collects an app instance ID, basic device and app information, and coarse location derived from your IP address. The App does not send your email, account names, credentials or Claude/ChatGPT usage data to Firebase, and does not link this data to your Advertising ID. See Google's Privacy Policy (policies.google.com/privacy) for details.")
+
                 PolicySectionTitle("Network Requests")
                 PolicyBullet("claude.ai — to fetch your usage metrics, spending limit info, and prepaid balance")
                 PolicyBullet("chatgpt.com (only if you enable Codex tracking) — to authenticate and fetch your Codex usage data")
                 PolicyBullet("Google ad servers — to load and display AdMob ads")
+                PolicyBullet("Google Analytics for Firebase — to send the counts described above")
                 PolicyBody("No other network requests are made.")
 
                 PolicySectionTitle("Data Security")
@@ -134,7 +137,7 @@ fun PrivacyPolicyScreen(onBack: () -> Unit) {
                 PolicyBullet("All network communication uses HTTPS")
 
                 PolicySectionTitle("Third-Party Services")
-                PolicyBody("Google AdMob is used to display ads, as described above. This App is not affiliated with, endorsed by, or officially connected to Anthropic or OpenAI in any way. It uses the same API endpoints that the Claude.ai and ChatGPT web interfaces use.")
+                PolicyBody("Google AdMob is used to display ads, and Google Analytics for Firebase to count saved accounts, as described above. This App is not affiliated with, endorsed by, or officially connected to Anthropic or OpenAI in any way. It uses the same API endpoints that the Claude.ai and ChatGPT web interfaces use.")
 
                 PolicySectionTitle("Children's Privacy")
                 PolicyBody("This App is not intended for use by children under 13.")

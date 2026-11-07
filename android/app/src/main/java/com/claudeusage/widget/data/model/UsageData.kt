@@ -30,8 +30,7 @@ data class UsageMetric(
             return try {
                 UsageMetric(
                     utilization = json.optDouble("utilization", 0.0),
-                    resetsAt = json.optString("resets_at", "").takeIf { it.isNotEmpty() }
-                        ?.let { Instant.parse(it) }
+                    resetsAt = UsageData.parseInstant(json.optString("resets_at", ""))
                 )
             } catch (e: Exception) {
                 null
@@ -63,7 +62,8 @@ data class UsageData(
     val extraUsage: UsageMetric?,
     val extraUsageInfo: ExtraUsageInfo? = null,
     val fetchedAt: Instant = Instant.now(),
-    val rawKeys: List<String> = emptyList()
+    val rawKeys: List<String> = emptyList(),
+    val hasSessionLimit: Boolean = true
 ) {
     val extraMetrics: List<LabeledMetric>
         get() = dynamicMetrics + listOfNotNull(
@@ -88,8 +88,24 @@ data class UsageData(
                 sevenDay = UsageMetric.fromJson(json.optJSONObject("seven_day")),
                 dynamicMetrics = (dynamic + limitsMetrics(json)).distinctBy { it.label },
                 extraUsage = UsageMetric.fromJson(json.optJSONObject("extra_usage")),
-                rawKeys = keys
+                rawKeys = keys,
+                hasSessionLimit = hasSessionLimit(json)
             )
+        }
+
+        /**
+         * Plans without a 5-hour limit send five_hour = null and no "session"
+         * entry in limits. five_hour alone can't tell: it is also null after a
+         * reset on plans that do have the limit.
+         */
+        private fun hasSessionLimit(json: JSONObject): Boolean {
+            if (json.optJSONObject("five_hour") != null) return true
+            val array = json.optJSONArray("limits") ?: return true
+            return (0 until array.length()).any { i ->
+                val entry = array.optJSONObject(i) ?: return@any false
+                entry.optString("group") == "session" ||
+                    entry.optString("kind").startsWith("session")
+            }
         }
 
         /**
@@ -144,7 +160,8 @@ data class UsageData(
             return null
         }
 
-        private fun parseInstant(value: String): Instant? {
+        // resets_at carries a +00:00 offset, which Instant.parse rejects before Java 12 (Android 13 and older)
+        internal fun parseInstant(value: String): Instant? {
             if (value.isEmpty()) return null
             return try {
                 Instant.parse(value)

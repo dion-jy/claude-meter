@@ -466,13 +466,15 @@ private fun UsageContent(
         // Main usage cards - always show even when null (after reset)
         val defaultMetric = com.claudeusage.widget.data.model.UsageMetric(0.0, null)
 
-        UsageCard(
-            title = "Current Session",
-            subtitle = "5-hour window",
-            metric = data.fiveHour ?: defaultMetric,
-            totalWindowHours = 5.0
-        )
-        Spacer(modifier = Modifier.height(12.dp))
+        if (data.hasSessionLimit) {
+            UsageCard(
+                title = "Current Session",
+                subtitle = "5-hour window",
+                metric = data.fiveHour ?: defaultMetric,
+                totalWindowHours = 5.0
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+        }
 
         UsageCard(
             title = "Weekly Limit",
@@ -754,20 +756,12 @@ private fun CodexSection(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f, fill = false)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = "Codex Usage",
-                            color = CodexGreen,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "(beta)",
-                            color = ExtendedTheme.colors.textMuted,
-                            fontSize = 11.sp
-                        )
-                    }
+                    Text(
+                        text = "Codex Usage",
+                        color = CodexGreen,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
                     val activeCodex = codexAccounts.active
                     if (activeCodex == null) {
                         Text(

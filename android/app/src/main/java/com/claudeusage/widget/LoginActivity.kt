@@ -6,6 +6,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.view.ViewGroup
 import android.webkit.CookieManager
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
@@ -284,6 +285,12 @@ private fun LoginWebViewScreen(
                 factory = { context ->
                     try {
                         WebView(context).apply {
+                            // AndroidView defaults to WRAP_CONTENT, which makes WebView lay pages out with a
+                            // 0px viewport height, so full-height pages (chatgpt.com login) render blank
+                            layoutParams = ViewGroup.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                                ViewGroup.LayoutParams.MATCH_PARENT
+                            )
                             settings.javaScriptEnabled = true
                             settings.domStorageEnabled = true
                             settings.setSupportMultipleWindows(false)
