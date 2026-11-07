@@ -6,6 +6,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.view.ViewGroup
 import android.webkit.CookieManager
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
@@ -122,11 +123,10 @@ class CodexLoginActivity : ComponentActivity() {
     companion object {
         const val EXTRA_COOKIES = "codex_cookies"
 
-        // Chrome Mobile User-Agent (without "wv" / "Version/4.0" that marks WebViews).
-        // This allows Google OAuth to work inside the WebView.
-        internal const val CHROME_USER_AGENT =
-            "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 " +
-            "(KHTML, like Gecko) Chrome/121.0.6167.143 Mobile Safari/537.36"
+        // Strip the "wv" / "Version/4.0" markers from the real WebView User-Agent so it reads as
+        // Chrome Mobile with the actual engine version; a hard-coded old Chrome version breaks chatgpt.com.
+        internal fun chromeUserAgent(webViewUa: String): String =
+            webViewUa.replace("; wv", "").replace(Regex("Version/\\S+ "), "")
 
         // JS to hide social OAuth buttons (Google, Microsoft, Apple) on OpenAI auth pages.
         // Google OAuth blocks WebView with "disallowed_useragent" error.
@@ -267,6 +267,12 @@ private fun CodexLoginWebViewScreen(
                 factory = { context ->
                     try {
                         WebView(context).apply {
+                            // AndroidView defaults to WRAP_CONTENT, which makes WebView lay pages out with a
+                            // 0px viewport height, so full-height pages (chatgpt.com login) render blank
+                            layoutParams = ViewGroup.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                                ViewGroup.LayoutParams.MATCH_PARENT
+                            )
                             settings.javaScriptEnabled = true
                             settings.domStorageEnabled = true
                             settings.setSupportMultipleWindows(false)
@@ -276,7 +282,7 @@ private fun CodexLoginWebViewScreen(
                             // Google blocks OAuth in WebViews by detecting "wv" and
                             // "Version/X.X" in the UA string. Removing these allows
                             // Google/Microsoft/Apple SSO to work normally.
-                            settings.userAgentString = CodexLoginActivity.CHROME_USER_AGENT
+                            settings.userAgentString = CodexLoginActivity.chromeUserAgent(settings.userAgentString)
 
                             val webView = this
                             try {

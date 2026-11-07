@@ -1,6 +1,6 @@
 # 개인정보처리방침
 
-**최종 수정일: 2026년 8월 23일**
+**최종 수정일: 2026년 11월 2일**
 
 > This document is a Korean translation of [PRIVACY_POLICY.md](PRIVACY_POLICY.md). 내용이 다를 경우 영어 원문이 우선합니다.
 
@@ -10,7 +10,7 @@ ClaudeMeter("앱")는 Claude.ai(및 선택적으로 ChatGPT/Codex) 사용량 정
 
 ## 데이터 수집
 
-앱 자체는 개발자가 운영하는 서버로 어떠한 개인 데이터도 수집·저장·전송하지 **않습니다**. 다만 앱에는 Google AdMob 광고 SDK가 포함되어 있으며, 아래 [광고](#광고-google-admob) 섹션에 설명된 식별자를 수집합니다.
+앱 자체는 개발자가 운영하는 서버로 어떠한 개인 데이터도 수집·저장·전송하지 **않습니다**. 다만 앱에는 Google AdMob 광고 SDK와 Firebase Analytics가 포함되어 있으며, 아래 [광고](#광고-google-admob) 및 [사용 분석](#사용-분석-firebase) 섹션에 설명된 데이터를 수집합니다.
 
 ### 앱이 기기에 로컬로 저장하는 정보:
 - **Claude 세션 키**: Claude.ai API 인증에 사용됩니다. 암호화 저장소(Android EncryptedSharedPreferences)에 기기 내에만 저장됩니다.
@@ -20,7 +20,6 @@ ClaudeMeter("앱")는 Claude.ai(및 선택적으로 ChatGPT/Codex) 사용량 정
 - **사용량 히스토리**: 예측 기능을 위해 최근 사용량 스냅샷을 로컬에 보관합니다.
 
 ### 앱이 하지 않는 것:
-- 분석(analytics)이나 원격 측정(telemetry) 데이터를 수집하지 않습니다
 - Claude/ChatGPT 자격증명이나 사용량 데이터를 제3자와 공유하지 않습니다
 - 개발자가 운영하는 어떤 서버로도 데이터를 보내지 않습니다
 
@@ -39,6 +38,10 @@ ClaudeMeter("앱")는 Claude.ai(및 선택적으로 ChatGPT/Codex) 사용량 정
 
 기기 설정의 **설정 → Google → 광고**(또는 **설정 → 개인정보 보호 → 광고**)에서 언제든지 광고 개인 최적화를 제한하거나 광고 ID를 삭제/재설정할 수 있습니다.
 
+## 사용 분석 (Firebase)
+
+앱은 저장된 계정 수(0, 1, 2, 3개 이상)와 계정 추가·전환 시점을 집계하기 위해 Google Analytics for Firebase를 사용합니다. Firebase는 앱 인스턴스 ID, 기본적인 기기·앱 정보, IP 주소에서 파생된 대략적인 위치도 수집합니다. 앱은 이메일, 계정 이름, 자격증명, Claude/ChatGPT 사용량 데이터를 Firebase로 보내지 않으며, 이 데이터를 광고 ID와 연결하지 않습니다. 자세한 내용은 [Google 개인정보처리방침](https://policies.google.com/privacy?hl=ko)을 참고하세요.
+
 ## 네트워크 요청
 
 앱은 다음 서버와 통신합니다:
@@ -46,6 +49,7 @@ ClaudeMeter("앱")는 Claude.ai(및 선택적으로 ChatGPT/Codex) 사용량 정
 - **`claude.ai`** — 사용량 지표, 지출 한도 정보, 선불 잔액 조회 (예: `/api/organizations/{id}/usage`)
 - **`chatgpt.com`** (Codex 추적을 활성화한 경우에만) — Codex 사용량 인증 및 조회
 - **Google 광고 서버** — AdMob 광고 로드 및 표시
+- **Google Analytics for Firebase** — 위에 설명한 집계 값 전송
 
 그 외의 네트워크 요청은 없습니다.
 
@@ -57,6 +61,7 @@ ClaudeMeter("앱")는 Claude.ai(및 선택적으로 ChatGPT/Codex) 사용량 정
 ## 제3자 서비스
 
 - 광고 표시를 위해 위에 설명한 대로 **Google AdMob**을 사용합니다.
+- 저장된 계정 수 집계를 위해 위에 설명한 대로 **Google Analytics for Firebase**를 사용합니다.
 - 이 앱은 어떤 방식으로도 **Anthropic 또는 OpenAI와 제휴하거나, 승인받거나, 공식적으로 연결되어 있지 않습니다**. Claude.ai 및 ChatGPT 웹 인터페이스가 사용하는 것과 동일한 API 엔드포인트를 사용합니다.
 
 ## 아동의 개인정보

@@ -5,9 +5,12 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Intent
+import android.os.Bundle
 import androidx.core.app.NotificationCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.FirebaseApp
+import com.google.firebase.analytics.FirebaseAnalytics
 import com.claudeusage.widget.MainActivity
 import com.claudeusage.widget.R
 import com.claudeusage.widget.data.local.AppPreferences
@@ -111,6 +114,8 @@ class UsageViewModel(application: Application) : AndroidViewModel(application) {
     private var prevWeeklyUtil: Double? = null
     private var prevDynamicUtils: Map<String, Double> = emptyMap()
     private var lastCoachEvalTime: Long = 0L
+    private val analytics = FirebaseApp.getApps(application).firstOrNull()
+        ?.let { FirebaseAnalytics.getInstance(application) }
 
     init {
         createCoachNotificationChannel()
@@ -139,7 +144,9 @@ class UsageViewModel(application: Application) : AndroidViewModel(application) {
                 onSuccess = { orgId ->
                     val credentials = Credentials(sessionKey, orgId)
                     val label = repository.fetchAccountLabel(sessionKey).orEmpty()
+                    val before = credentialManager.getAccounts().size
                     credentialManager.saveCredentials(credentials, label)
+                    logAccountAdded("claude", before, credentialManager.getAccounts().size)
                     onClaudeAccountChanged()
                     fetchUsageData()
                 },
@@ -224,6 +231,7 @@ class UsageViewModel(application: Application) : AndroidViewModel(application) {
     fun switchClaudeAccount(id: String) {
         if (id == credentialManager.activeAccountId) return
         if (!credentialManager.switchAccount(id)) return
+        logAccountEvent("account_switched", "claude")
         autoRefreshJob?.cancel()
         onClaudeAccountChanged()
         _lastUpdated.value = null
@@ -258,6 +266,18 @@ class UsageViewModel(application: Application) : AndroidViewModel(application) {
             codexCredentialManager.getAccounts().map { it.toSummary() },
             codexCredentialManager.activeAccountId
         )
+        analytics?.setUserProperty("claude_accounts", accountBucket(_claudeAccounts.value.accounts.size))
+        analytics?.setUserProperty("codex_accounts", accountBucket(_codexAccounts.value.accounts.size))
+    }
+
+    private fun accountBucket(count: Int) = if (count >= 3) "3+" else count.toString()
+
+    private fun logAccountAdded(service: String, before: Int, after: Int) {
+        if (before >= 1 && after > before) logAccountEvent("account_added", service)
+    }
+
+    private fun logAccountEvent(name: String, service: String) {
+        analytics?.logEvent(name, Bundle().apply { putString("service", service) })
     }
 
     private fun reloadHistory() {
@@ -292,7 +312,9 @@ class UsageViewModel(application: Application) : AndroidViewModel(application) {
             tokenResult.fold(
                 onSuccess = { session ->
                     val credentials = CodexCredentials(session.accessToken, cookies)
+                    val before = codexCredentialManager.getAccounts().size
                     codexCredentialManager.saveCredentials(credentials, session.email)
+                    logAccountAdded("codex", before, codexCredentialManager.getAccounts().size)
                     onCodexAccountChanged()
                     fetchCodexUsageData()
                 },
@@ -382,6 +404,7 @@ class UsageViewModel(application: Application) : AndroidViewModel(application) {
     fun switchCodexAccount(id: String) {
         if (id == codexCredentialManager.activeAccountId) return
         if (!codexCredentialManager.switchAccount(id)) return
+        logAccountEvent("account_switched", "codex")
         onCodexAccountChanged()
         clearCodexData()
         refreshCodex()
