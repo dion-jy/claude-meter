@@ -6,6 +6,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.view.ViewGroup
 import android.webkit.ConsoleMessage
 import android.webkit.CookieManager
 import android.webkit.WebChromeClient
@@ -132,18 +133,6 @@ class CodexLoginActivity : ComponentActivity() {
         // Chrome Mobile with the actual engine version; a hard-coded old Chrome version breaks chatgpt.com.
         internal fun chromeUserAgent(webViewUa: String): String =
             webViewUa.replace("; wv", "").replace(Regex("Version/\\S+ "), "")
-
-        // In the WebView, chatgpt.com/auth/login ends up with a 0px-tall <body> (overflow hidden),
-        // so the login form is laid out but clipped away. Force the page to fill the viewport.
-        internal const val FULL_HEIGHT_JS = """
-            (function() {
-                if (document.getElementById('cm-full-height')) return;
-                var style = document.createElement('style');
-                style.id = 'cm-full-height';
-                style.textContent = 'html, body { height: 100% !important; min-height: 100% !important; }';
-                document.head.appendChild(style);
-            })();
-        """
 
         // JS to hide social OAuth buttons (Google, Microsoft, Apple) on OpenAI auth pages.
         // Google OAuth blocks WebView with "disallowed_useragent" error.
@@ -286,6 +275,12 @@ private fun CodexLoginWebViewScreen(
                 factory = { context ->
                     try {
                         WebView(context).apply {
+                            // AndroidView defaults to WRAP_CONTENT, which makes WebView lay pages out with a
+                            // 0px viewport height, so full-height pages (chatgpt.com login) render blank
+                            layoutParams = ViewGroup.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                                ViewGroup.LayoutParams.MATCH_PARENT
+                            )
                             settings.javaScriptEnabled = true
                             settings.domStorageEnabled = true
                             settings.setSupportMultipleWindows(false)
@@ -347,10 +342,6 @@ private fun CodexLoginWebViewScreen(
 
                                 override fun onPageFinished(view: WebView?, url: String?) {
                                     isLoading = false
-
-                                    if (url?.contains("chatgpt.com") == true) {
-                                        view?.evaluateJavascript(CodexLoginActivity.FULL_HEIGHT_JS, null)
-                                    }
 
                                     if (BuildConfig.DEBUG && view != null) {
                                         view.postDelayed({ view.evaluateJavascript(PROBE_START_JS, null) }, 3000)
@@ -466,7 +457,6 @@ private const val PROBE_READ_JS = """
             htmlStyle: (document.documentElement.getAttribute('style') || '').slice(0, 80),
             bodyStyle: (document.body.getAttribute('style') || '').slice(0, 80),
             bodyCssH: getComputedStyle(document.body).height,
-            fix: !!document.getElementById('cm-full-height'),
             at: desc(document.elementFromPoint(180, 150)),
             input: chain(document.querySelector('input'))
         });
