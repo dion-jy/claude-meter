@@ -756,20 +756,12 @@ private fun CodexSection(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f, fill = false)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = "Codex Usage",
-                            color = CodexGreen,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "(beta)",
-                            color = ExtendedTheme.colors.textMuted,
-                            fontSize = 11.sp
-                        )
-                    }
+                    Text(
+                        text = "Codex Usage",
+                        color = CodexGreen,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
                     val activeCodex = codexAccounts.active
                     if (activeCodex == null) {
                         Text(
