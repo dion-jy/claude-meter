@@ -40,20 +40,12 @@ import com.claudeusage.widget.data.local.AppPreferences
 import com.claudeusage.widget.data.model.CodexUsageData
 import com.claudeusage.widget.data.model.ExtraUsageInfo
 import com.claudeusage.widget.data.model.UsageData
-import com.claudeusage.widget.data.model.CoachNotification
-import com.claudeusage.widget.data.model.CoachSeverity
 import com.claudeusage.widget.ui.components.BannerAd
-import com.claudeusage.widget.ui.components.CoachBanner
+import androidx.compose.material.icons.filled.Close
 import com.claudeusage.widget.ui.components.UsageProgressBar
 import com.claudeusage.widget.ui.theme.*
 import java.time.Duration
 import java.time.Instant
-
-private val ACCOUNT_HINT = CoachNotification(
-    message = "New: tap your email at the top to switch accounts or add another " +
-        "Claude or ChatGPT account.",
-    severity = CoachSeverity.INFO
-)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -222,7 +214,7 @@ fun UsageScreen(
                     onCodexLogout = onCodexLogout,
                     codexAccounts = codexAccounts,
                     onSwitchCodexAccount = onSwitchCodexAccount,
-                    showAccountHint = showAccountHint && claudeAccounts.accounts.isNotEmpty(),
+                    showAccountHint = showAccountHint && claudeAccounts.accounts.size == 1,
                     onAccountHintClick = {
                         onDismissAccountHint()
                         claudeMenuOpen.value = true
@@ -456,12 +448,9 @@ private fun UsageContent(
             .padding(horizontal = 20.dp, vertical = 8.dp)
     ) {
         // One-time pointer to the account menu for people updating from a single-account version
-        CoachBanner(
-            notification = if (showAccountHint) ACCOUNT_HINT else null,
-            onClick = onAccountHintClick,
-            onDismiss = onDismissAccountHint,
-            modifier = Modifier.padding(bottom = 12.dp)
-        )
+        if (showAccountHint) {
+            AccountHintCard(onAccountHintClick, onDismissAccountHint)
+        }
 
         // Main usage cards - always show even when null (after reset)
         val defaultMetric = com.claudeusage.widget.data.model.UsageMetric(0.0, null)
@@ -885,10 +874,23 @@ private fun AccountSwitcher(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(modifier = Modifier.weight(1f, fill = false)) { content() }
+            // Single account: a "+ Add" pill so people notice they can add a second one
+            if (accounts.accounts.size <= 1) {
+                Text(
+                    text = "+ Add",
+                    color = accentColor,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier
+                        .padding(start = 6.dp)
+                        .background(accentColor.copy(alpha = 0.18f), RoundedCornerShape(10.dp))
+                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                )
+            }
             Icon(
                 Icons.Default.ArrowDropDown,
                 contentDescription = "Switch account",
-                tint = ExtendedTheme.colors.textMuted
+                tint = accentColor
             )
         }
         DropdownMenu(
@@ -1118,6 +1120,50 @@ private fun ErrorContent(
                 text = if (isAuthError) "Sign In Again" else "Retry",
                 fontSize = 15.sp
             )
+        }
+    }
+}
+
+/** Solid, hard-to-miss pointer to the account menu, shown once to single-account users */
+@Composable
+private fun AccountHintCard(onClick: () -> Unit, onDismiss: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 12.dp)
+            .clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(containerColor = ClaudePurple),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(start = 16.dp, top = 14.dp, bottom = 14.dp, end = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Default.Add,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier
+                    .size(32.dp)
+                    .background(Color.White.copy(alpha = 0.2f), CircleShape)
+                    .padding(6.dp)
+            )
+            Column(modifier = Modifier.weight(1f).padding(start = 12.dp)) {
+                Text(
+                    text = "Have more than one account?",
+                    color = Color.White,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "Tap here to switch or add one",
+                    color = Color.White.copy(alpha = 0.85f),
+                    fontSize = 13.sp
+                )
+            }
+            IconButton(onClick = onDismiss) {
+                Icon(Icons.Default.Close, contentDescription = "Dismiss", tint = Color.White)
+            }
         }
     }
 }
