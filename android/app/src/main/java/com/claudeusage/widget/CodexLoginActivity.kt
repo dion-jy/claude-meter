@@ -127,50 +127,6 @@ class CodexLoginActivity : ComponentActivity() {
         // Chrome Mobile with the actual engine version; a hard-coded old Chrome version breaks chatgpt.com.
         internal fun chromeUserAgent(webViewUa: String): String =
             webViewUa.replace("; wv", "").replace(Regex("Version/\\S+ "), "")
-
-        // JS to hide social OAuth buttons (Google, Microsoft, Apple) on OpenAI auth pages.
-        // Google OAuth blocks WebView with "disallowed_useragent" error.
-        // Users must use email + verification code login instead.
-        internal const val HIDE_SOCIAL_BUTTONS_JS = """
-            (function() {
-                var style = document.createElement('style');
-                style.textContent = `
-                    /* Hide social login buttons */
-                    button[data-provider="google"],
-                    button[data-provider="microsoft"],
-                    button[data-provider="apple"],
-                    a[href*="accounts.google.com"],
-                    a[href*="login.microsoftonline.com"],
-                    a[href*="appleid.apple.com"],
-                    button:has(img[alt*="Google"]),
-                    button:has(img[alt*="Microsoft"]),
-                    button:has(img[alt*="Apple"]),
-                    .social-btn, .social-button,
-                    /* Hide "OR" divider */
-                    .login-or-separator, .separator, .divider {
-                        display: none !important;
-                    }
-                `;
-                document.head.appendChild(style);
-
-                var allElements = document.querySelectorAll('button, a, span, div');
-                allElements.forEach(function(el) {
-                    var text = (el.textContent || '').trim().toLowerCase();
-                    if (text === 'or' && el.children.length === 0) {
-                        el.style.display = 'none';
-                        if (el.parentElement) el.parentElement.style.display = 'none';
-                    }
-                    var social = ['google', 'microsoft', 'apple', 'continue with g'];
-                    for (var i = 0; i < social.length; i++) {
-                        if (text.includes(social[i])) {
-                            var btn = el.closest('button') || el.closest('a') || el;
-                            btn.style.display = 'none';
-                            break;
-                        }
-                    }
-                });
-            })();
-        """
     }
 }
 
@@ -303,6 +259,10 @@ private fun CodexLoginWebViewScreen(
 
                                 override fun onPageFinished(view: WebView?, url: String?) {
                                     isLoading = false
+
+                                    // Same email-only login as Claude: Google/Apple/Microsoft SSO
+                                    // dead-ends in a WebView
+                                    view?.evaluateJavascript(LoginActivity.HIDE_SSO_BUTTONS_JS, null)
 
                                     val isAuthPage = url?.contains("/auth") == true
                                             || url?.contains("auth0.openai.com") == true
