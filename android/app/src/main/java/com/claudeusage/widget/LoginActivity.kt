@@ -161,8 +161,7 @@ class LoginActivity : ComponentActivity() {
                         }
                         label = label.toLowerCase();
                         if (label.indexOf('google') !== -1 ||
-                            label.indexOf('apple') !== -1 ||
-                            label.indexOf('microsoft') !== -1) {
+                            label.indexOf('apple') !== -1) {
                             hideEl(el);
                         }
                     }

@@ -260,10 +260,6 @@ private fun CodexLoginWebViewScreen(
                                 override fun onPageFinished(view: WebView?, url: String?) {
                                     isLoading = false
 
-                                    // Same email-only login as Claude: Google/Apple/Microsoft SSO
-                                    // dead-ends in a WebView
-                                    view?.evaluateJavascript(LoginActivity.HIDE_SSO_BUTTONS_JS, null)
-
                                     val isAuthPage = url?.contains("/auth") == true
                                             || url?.contains("auth0.openai.com") == true
                                             || url?.contains("accounts.google.com") == true
