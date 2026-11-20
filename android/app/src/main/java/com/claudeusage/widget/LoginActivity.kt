@@ -149,6 +149,10 @@ class LoginActivity : ComponentActivity() {
                 }
 
                 function hideSsoButtons() {
+                    // React can rebuild <head>/<html>, dropping the style and the observer
+                    if (!style.isConnected) {
+                        (document.head || document.documentElement).appendChild(style);
+                    }
                     var els = document.querySelectorAll('button, a, [role="button"]');
                     for (var i = 0; i < els.length; i++) {
                         var el = els[i];
@@ -177,10 +181,17 @@ class LoginActivity : ComponentActivity() {
                 hideSsoButtons();
                 try {
                     new MutationObserver(hideSsoButtons).observe(
-                        document.documentElement,
+                        document,
                         { childList: true, subtree: true }
                     );
                 } catch (e) {}
+                // ponytail: polling backstop for when the page swaps the observed root
+                // (seen when adding a 2nd account); stops itself after 30s
+                var ticks = 0;
+                var timer = setInterval(function() {
+                    hideSsoButtons();
+                    if (++ticks >= 60) clearInterval(timer);
+                }, 500);
             })();
         """
     }
