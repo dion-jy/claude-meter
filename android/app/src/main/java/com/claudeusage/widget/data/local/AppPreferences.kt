@@ -10,7 +10,7 @@ class AppPreferences(context: Context) {
     )
 
     var notificationEnabled: Boolean
-        get() = prefs.getBoolean(KEY_NOTIFICATION_ENABLED, false)
+        get() = prefs.getBoolean(KEY_NOTIFICATION_ENABLED, true)
         set(value) = prefs.edit().putBoolean(KEY_NOTIFICATION_ENABLED, value).apply()
 
     /**

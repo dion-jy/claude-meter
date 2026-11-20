@@ -75,9 +75,8 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * Permission asked for from the post-login prompt. Granting it only lets
-     * alerts through; it must not switch on the persistent notification,
-     * which stays an explicit opt-in in Settings.
+     * Permission asked for from the post-login prompt. The persistent
+     * notification is on by default, so granting it is what makes it show.
      */
     private val alertPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -144,9 +143,8 @@ class MainActivity : ComponentActivity() {
                         title = { Text("Allow notifications?") },
                         text = {
                             Text(
-                                "Claude Meter can alert you about your usage limits " +
-                                    "(Productivity Coach). You can also show usage in the " +
-                                    "status bar from Settings."
+                                "Claude Meter shows your usage in the status bar and can " +
+                                    "alert you about your limits. You can turn either off in Settings."
                             )
                         },
                         confirmButton = {
