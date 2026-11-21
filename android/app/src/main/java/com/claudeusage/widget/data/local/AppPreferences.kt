@@ -10,7 +10,7 @@ class AppPreferences(context: Context) {
     )
 
     var notificationEnabled: Boolean
-        get() = prefs.getBoolean(KEY_NOTIFICATION_ENABLED, false)
+        get() = prefs.getBoolean(KEY_NOTIFICATION_ENABLED, true)
         set(value) = prefs.edit().putBoolean(KEY_NOTIFICATION_ENABLED, value).apply()
 
     /**
@@ -72,7 +72,7 @@ class AppPreferences(context: Context) {
         private const val KEY_SHOW_CODEX_USAGE = "show_codex_usage"
         private const val KEY_THEME_MODE = "theme_mode"
         private const val KEY_COACH_ENABLED = "coach_enabled"
-        private const val KEY_ACCOUNT_HINT_DISMISSED = "account_hint_dismissed"
+        private const val KEY_ACCOUNT_HINT_DISMISSED = "account_hint_v2_dismissed" // v2: re-show once after 1.7.2
         private const val KEY_NOTIFICATION_PROMPT_SHOWN = "notification_prompt_shown"
 
         /**

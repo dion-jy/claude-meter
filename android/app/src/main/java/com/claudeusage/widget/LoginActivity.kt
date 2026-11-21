@@ -149,21 +149,31 @@ class LoginActivity : ComponentActivity() {
                 }
 
                 function hideSsoButtons() {
-                    var els = document.querySelectorAll('button, a, [role="button"]');
-                    for (var i = 0; i < els.length; i++) {
-                        var el = els[i];
-                        var label = (el.textContent || '') + ' ' +
-                                    (el.getAttribute('aria-label') || '');
-                        var icon = el.querySelector('img[alt], svg[aria-label]');
-                        if (icon) {
-                            label += ' ' + (icon.getAttribute('alt') || '') + ' ' +
-                                     (icon.getAttribute('aria-label') || '');
+                    // React can rebuild <head>/<html>, dropping the style and the observer
+                    if (!style.isConnected) {
+                        (document.head || document.documentElement).appendChild(style);
+                    }
+                    // Tag-agnostic: claude.ai's SSO buttons aren't always <button>/<a>.
+                    // Take each short "Google"/"Apple" label and hide its outermost
+                    // wrapper that holds nothing but that label (the button box).
+                    var nodes = document.querySelectorAll('body *');
+                    for (var i = 0; i < nodes.length; i++) {
+                        var el = nodes[i];
+                        // Start from the element that owns the label text itself, so a
+                        // wrapper around Google + Apple + email is never the starting point
+                        var own = '';
+                        for (var c = el.firstChild; c; c = c.nextSibling) {
+                            if (c.nodeType === 3) own += c.nodeValue;
                         }
-                        label = label.toLowerCase();
-                        if (label.indexOf('google') !== -1 ||
-                            label.indexOf('apple') !== -1) {
-                            hideEl(el);
+                        own = (own + ' ' + (el.getAttribute('aria-label') || '')).toLowerCase();
+                        var text = (el.textContent || '').trim();
+                        if (text.length > 40 ||
+                            (own.indexOf('google') === -1 && own.indexOf('apple') === -1)) continue;
+                        while (el.parentElement && el.parentElement !== document.body &&
+                               (el.parentElement.textContent || '').trim() === text) {
+                            el = el.parentElement;
                         }
+                        hideEl(el);
                     }
                     var all = document.querySelectorAll('*');
                     for (var j = 0; j < all.length; j++) {
@@ -177,10 +187,17 @@ class LoginActivity : ComponentActivity() {
                 hideSsoButtons();
                 try {
                     new MutationObserver(hideSsoButtons).observe(
-                        document.documentElement,
+                        document,
                         { childList: true, subtree: true }
                     );
                 } catch (e) {}
+                // ponytail: polling backstop for when the page swaps the observed root
+                // (seen when adding a 2nd account); stops itself after 30s
+                var ticks = 0;
+                var timer = setInterval(function() {
+                    hideSsoButtons();
+                    if (++ticks >= 60) clearInterval(timer);
+                }, 500);
             })();
         """
     }
