@@ -4,12 +4,15 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
@@ -193,52 +196,58 @@ fun ForecastScreen(
                 shape = RoundedCornerShape(16.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    // Series picker: one chip per available 7d limit, grouped
-                    // under the provider that owns it
+                    // Series picker: one compact row of toggles; the stats table below
+                    // already groups them by provider
                     if (allSeries.size > 1) {
-                        allSeries.groupBy { it.provider }.forEach { (provider, group) ->
-                            GroupLabel(provider)
-                            Spacer(modifier = Modifier.height(6.dp))
-                            FlowRow(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                group.forEach { series ->
-                                    val selected = visibleSeries.any { it.key == series.key }
-                                    FilterChip(
-                                        selected = selected,
-                                        onClick = {
-                                            // Keep at least one series on the graph
-                                            if (selected && visibleSeries.size == 1) return@FilterChip
-                                            onToggleSeries(series.key, !selected)
-                                        },
-                                        label = {
-                                            Text(
-                                                text = series.label,
-                                                fontSize = 12.sp,
-                                                fontWeight = if (series.isTotal) {
-                                                    FontWeight.Bold
-                                                } else {
-                                                    FontWeight.Medium
-                                                }
-                                            )
-                                        },
-                                        leadingIcon = {
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(8.dp)
-                                                    .background(series.color, CircleShape)
-                                            )
-                                        },
-                                        colors = FilterChipDefaults.filterChipColors(
-                                            selectedContainerColor = series.color.copy(alpha = 0.18f),
-                                            selectedLabelColor = MaterialTheme.colorScheme.onBackground
+                        FlowRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            allSeries.forEach { series ->
+                                val selected = visibleSeries.any { it.key == series.key }
+                                Row(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(50))
+                                        .background(
+                                            if (selected) series.color.copy(alpha = 0.18f) else Color.Transparent
                                         )
+                                        .border(
+                                            1.dp,
+                                            series.color.copy(alpha = if (selected) 0f else 0.35f),
+                                            RoundedCornerShape(50)
+                                        )
+                                        .clickable {
+                                            // Keep at least one series on the graph
+                                            if (selected && visibleSeries.size == 1) return@clickable
+                                            onToggleSeries(series.key, !selected)
+                                        }
+                                        .padding(horizontal = 10.dp, vertical = 5.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(7.dp)
+                                            .background(
+                                                series.color.copy(alpha = if (selected) 1f else 0.4f),
+                                                CircleShape
+                                            )
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = series.label,
+                                        fontSize = 12.sp,
+                                        fontWeight = if (series.isTotal) FontWeight.Bold else FontWeight.Medium,
+                                        color = if (selected) {
+                                            MaterialTheme.colorScheme.onBackground
+                                        } else {
+                                            ExtendedTheme.colors.textMuted
+                                        }
                                     )
                                 }
                             }
-                            Spacer(modifier = Modifier.height(10.dp))
                         }
+                        Spacer(modifier = Modifier.height(12.dp))
                     }
 
                     val textMeasurer = rememberTextMeasurer()
