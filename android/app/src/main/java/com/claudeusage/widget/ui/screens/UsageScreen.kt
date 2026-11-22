@@ -258,7 +258,7 @@ fun UsageScreen(
                         onLoginClick = onLoginClick,
                         claudeAccounts = claudeAccounts,
                         onSwitchAccount = onSwitchAccount,
-                        showAccountHint = showAccountHint && codexAccounts.accounts.isNotEmpty(),
+                        showAccountHint = showAccountHint && codexAccounts.accounts.size == 1,
                         onAccountHintClick = {
                             onDismissAccountHint()
                             headerMenuOpen.value = true
@@ -1197,12 +1197,9 @@ private fun ChatGptContent(
             .padding(horizontal = 20.dp, vertical = 8.dp)
     ) {
         // Same one-time pointer to the account menu as in Claude mode
-        CoachBanner(
-            notification = if (showAccountHint) ACCOUNT_HINT else null,
-            onClick = onAccountHintClick,
-            onDismiss = onDismissAccountHint,
-            modifier = Modifier.padding(bottom = 12.dp)
-        )
+        if (showAccountHint) {
+            AccountHintCard(onAccountHintClick, onDismissAccountHint, containerColor = CodexGreenDark)
+        }
 
         when (codexState) {
             is CodexUiState.Connected -> {
@@ -1507,13 +1504,17 @@ private fun ClaudeConnectButton(text: String, onClick: () -> Unit) {
 
 /** Solid, hard-to-miss pointer to the account menu, shown once to single-account users */
 @Composable
-private fun AccountHintCard(onClick: () -> Unit, onDismiss: () -> Unit) {
+private fun AccountHintCard(
+    onClick: () -> Unit,
+    onDismiss: () -> Unit,
+    containerColor: Color = ClaudePurple
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(bottom = 12.dp)
             .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(containerColor = ClaudePurple),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
         shape = RoundedCornerShape(12.dp)
     ) {
         Row(
