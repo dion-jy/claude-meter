@@ -34,6 +34,7 @@ import com.claudeusage.widget.ui.screens.UsageScreen
 import com.claudeusage.widget.ui.screens.UsageViewModel
 import com.claudeusage.widget.ui.components.InterstitialAdManager
 import com.claudeusage.widget.ui.theme.ClaudeUsageTheme
+import com.claudeusage.widget.widget.UsageWidgetReceiver
 
 private enum class Screen { Usage, Settings, Forecast, PrivacyPolicy }
 
@@ -46,6 +47,7 @@ class MainActivity : ComponentActivity() {
     private var notificationEnabled by mutableStateOf(false)
     private var coachEnabled by mutableStateOf(true)
     private var themeMode by mutableStateOf(AppPreferences.THEME_DARK)
+    private var primaryMode by mutableStateOf(AppPreferences.MODE_CLAUDE)
     private var hiddenMetrics by mutableStateOf<Set<String>>(emptySet())
     private var hiddenGraphSeries by mutableStateOf<Set<String>>(emptySet())
     private var showAccountHint by mutableStateOf(false)
@@ -89,7 +91,7 @@ class MainActivity : ComponentActivity() {
         if (granted) {
             appPreferences.notificationEnabled = true
             notificationEnabled = true
-            if (viewModel.uiState.value is UiState.Success) {
+            if (hasUsageToShow()) {
                 UsageNotificationService.start(applicationContext)
             }
         }
@@ -104,6 +106,7 @@ class MainActivity : ComponentActivity() {
         notificationEnabled = appPreferences.notificationEnabled
         coachEnabled = appPreferences.coachEnabled
         themeMode = appPreferences.themeMode
+        primaryMode = appPreferences.primaryMode
 
         // Load metric visibility from preferences
         hiddenMetrics = appPreferences.hiddenMetricKeys
@@ -133,7 +136,8 @@ class MainActivity : ComponentActivity() {
 
                 // Ask for notifications once, after the first successful load, with
                 // context, instead of a bare system dialog before the user has signed in
-                val isLoaded = uiState is UiState.Success
+                val isLoaded = uiState is UiState.Success ||
+                    codexState is CodexUiState.Connected
                 LaunchedEffect(isLoaded) {
                     if (isLoaded && shouldAskForNotifications()) showNotificationPrompt = true
                 }
@@ -167,23 +171,23 @@ class MainActivity : ComponentActivity() {
                             lastUpdated = lastUpdated,
                             hiddenMetrics = hiddenMetrics,
                             codexState = codexState,
+                            primaryMode = primaryMode,
+                            onModeChange = { mode -> applyPrimaryMode(mode) },
                             onRefresh = viewModel::refresh,
                             onLogout = {
                                 interstitialAdManager.showThen(this@MainActivity) {
                                     viewModel.logout()
-                                    cancelUpdatesIfNoClaudeAccount()
+                                    cancelUpdatesIfNoAccounts()
                                 }
                             },
                             onLoginClick = { launchLogin() },
-                            onManualLogin = { sessionKey ->
-                                viewModel.onManualLogin(sessionKey)
-                            },
                             onSettingsClick = { currentScreen = Screen.Settings },
                             onForecastClick = { currentScreen = Screen.Forecast },
                             onCodexLoginClick = { launchCodexLogin() },
                             onCodexLogout = {
                                 interstitialAdManager.showThen(this@MainActivity) {
                                     viewModel.logoutCodex()
+                                    cancelUpdatesIfNoAccounts()
                                 }
                             },
                             claudeAccounts = claudeAccounts,
@@ -196,21 +200,39 @@ class MainActivity : ComponentActivity() {
                     }
                     Screen.Settings -> {
                         BackHandler { currentScreen = Screen.Usage }
-                        // One toggle per metric the server currently reports,
-                        // plus the app-level Codex toggle
+                        // Only what the current mode can actually hide. The
+                        // primary provider is the screen, so it has no toggle;
+                        // the Claude per-model metrics only render in Claude mode.
                         val usageData = (uiState as? UiState.Success)?.data
                         val availableToggles = buildList {
-                            usageData?.extraMetrics?.forEach { labeled ->
+                            if (primaryMode == AppPreferences.MODE_CHATGPT) {
+                                val claudeKey = AppPreferences.CLAUDE_METRIC_KEY
                                 add(
                                     MetricToggle(
-                                        labeled.key,
-                                        labeled.label,
-                                        labeled.key !in hiddenMetrics
+                                        claudeKey,
+                                        "Claude Usage",
+                                        claudeKey !in hiddenMetrics
+                                    )
+                                )
+                            } else {
+                                usageData?.extraMetrics?.forEach { labeled ->
+                                    add(
+                                        MetricToggle(
+                                            labeled.key,
+                                            labeled.label,
+                                            labeled.key !in hiddenMetrics
+                                        )
+                                    )
+                                }
+                                val codexKey = AppPreferences.CODEX_METRIC_KEY
+                                add(
+                                    MetricToggle(
+                                        codexKey,
+                                        "Codex Usage",
+                                        codexKey !in hiddenMetrics
                                     )
                                 )
                             }
-                            val codexKey = AppPreferences.CODEX_METRIC_KEY
-                            add(MetricToggle(codexKey, "Codex Usage", codexKey !in hiddenMetrics))
                         }
 
                         SettingsScreen(
@@ -232,6 +254,8 @@ class MainActivity : ComponentActivity() {
                                 themeMode = mode
                                 appPreferences.themeMode = mode
                             },
+                            primaryMode = primaryMode,
+                            onPrimaryModeChange = { mode -> applyPrimaryMode(mode) },
                             onPrivacyPolicyClick = { currentScreen = Screen.PrivacyPolicy },
                             claudeAccounts = claudeAccounts,
                             onSwitchClaudeAccount = viewModel::switchClaudeAccount,
@@ -239,7 +263,7 @@ class MainActivity : ComponentActivity() {
                             onRemoveClaudeAccount = { id ->
                                 interstitialAdManager.showThen(this@MainActivity) {
                                     viewModel.removeClaudeAccount(id)
-                                    if (cancelUpdatesIfNoClaudeAccount()) {
+                                    if (cancelUpdatesIfNoAccounts()) {
                                         // Nothing left to show here; the usage screen offers login
                                         currentScreen = Screen.Usage
                                     }
@@ -253,6 +277,10 @@ class MainActivity : ComponentActivity() {
                             onRemoveCodexAccount = { id ->
                                 interstitialAdManager.showThen(this@MainActivity) {
                                     viewModel.removeCodexAccount(id)
+                                    if (cancelUpdatesIfNoAccounts()) {
+                                        // Nothing left to show here; the usage screen offers login
+                                        currentScreen = Screen.Usage
+                                    }
                                 }
                             },
                             onBack = { currentScreen = Screen.Usage }
@@ -284,7 +312,8 @@ class MainActivity : ComponentActivity() {
                                 hiddenGraphSeries = updated
                                 appPreferences.hiddenGraphSeries = updated
                             },
-                            onBack = { currentScreen = Screen.Usage }
+                            onBack = { currentScreen = Screen.Usage },
+                            codexFirst = primaryMode == AppPreferences.MODE_CHATGPT
                         )
                     }
                 }
@@ -295,8 +324,9 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         viewModel.onAppForeground()
-        val state = viewModel.uiState.value
-        if (state is UiState.Success) {
+        val hasData = viewModel.uiState.value is UiState.Success ||
+            viewModel.codexState.value is CodexUiState.Connected
+        if (hasData) {
             viewModel.refresh()
         }
     }
@@ -306,9 +336,14 @@ class MainActivity : ComponentActivity() {
         viewModel.onAppBackground()
     }
 
-    /** Stops background updates once no Claude account is left; returns true if it did. */
-    private fun cancelUpdatesIfNoClaudeAccount(): Boolean {
+    /**
+     * Stops background updates once no account of either provider is left;
+     * returns true if it did. The worker serves whichever provider is
+     * connected, so a ChatGPT-only user keeps their widget and notification.
+     */
+    private fun cancelUpdatesIfNoAccounts(): Boolean {
         if (viewModel.claudeAccounts.value.accounts.isNotEmpty()) return false
+        if (viewModel.codexAccounts.value.accounts.isNotEmpty()) return false
         UsageUpdateScheduler.cancel(applicationContext)
         return true
     }
@@ -340,6 +375,11 @@ class MainActivity : ComponentActivity() {
         codexLoginLauncher.launch(intent)
     }
 
+    /** Either provider has data, so the persistent notification has something to show */
+    private fun hasUsageToShow(): Boolean =
+        viewModel.uiState.value is UiState.Success ||
+            viewModel.codexState.value is CodexUiState.Connected
+
     private fun handleNotificationToggle(enabled: Boolean) {
         if (enabled) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -348,7 +388,7 @@ class MainActivity : ComponentActivity() {
                 ) {
                     appPreferences.notificationEnabled = true
                     notificationEnabled = true
-                    if (viewModel.uiState.value is UiState.Success) {
+                    if (hasUsageToShow()) {
                         UsageNotificationService.start(applicationContext)
                     }
                 } else {
@@ -359,7 +399,7 @@ class MainActivity : ComponentActivity() {
             } else {
                 appPreferences.notificationEnabled = true
                 notificationEnabled = true
-                if (viewModel.uiState.value is UiState.Success) {
+                if (hasUsageToShow()) {
                     UsageNotificationService.start(applicationContext)
                 }
             }
@@ -367,6 +407,37 @@ class MainActivity : ComponentActivity() {
             appPreferences.notificationEnabled = false
             notificationEnabled = false
             UsageNotificationService.stop(applicationContext)
+        }
+    }
+
+    /** Switches which provider the app is centered on and refreshes its surfaces. */
+    private fun applyPrimaryMode(mode: String) {
+        if (mode == primaryMode) return
+        primaryMode = mode
+        appPreferences.primaryMode = mode
+        // The primary provider is the screen, so it must not stay hidden: a key
+        // switched off in the other mode would otherwise keep it off the
+        // forecast graph with no toggle left to switch it back on.
+        val primaryKey = if (mode == AppPreferences.MODE_CHATGPT) {
+            AppPreferences.CODEX_METRIC_KEY
+        } else {
+            AppPreferences.CLAUDE_METRIC_KEY
+        }
+        if (primaryKey in hiddenMetrics) {
+            hiddenMetrics = hiddenMetrics - primaryKey
+            appPreferences.hiddenMetricKeys = hiddenMetrics
+        }
+        // Widget and notification follow the primary provider
+        try {
+            UsageWidgetReceiver.updateWidget(applicationContext)
+        } catch (_: Exception) {
+            // Widget might not be placed
+        }
+        if (appPreferences.notificationEnabled) {
+            UsageNotificationService.forceUpdate(applicationContext)
+        }
+        if (mode == AppPreferences.MODE_CHATGPT) {
+            viewModel.refreshCodex()
         }
     }
 
