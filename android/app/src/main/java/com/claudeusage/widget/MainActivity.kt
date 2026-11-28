@@ -91,7 +91,7 @@ class MainActivity : ComponentActivity() {
         if (granted) {
             appPreferences.notificationEnabled = true
             notificationEnabled = true
-            if (viewModel.uiState.value is UiState.Success) {
+            if (hasUsageToShow()) {
                 UsageNotificationService.start(applicationContext)
             }
         }
@@ -312,7 +312,8 @@ class MainActivity : ComponentActivity() {
                                 hiddenGraphSeries = updated
                                 appPreferences.hiddenGraphSeries = updated
                             },
-                            onBack = { currentScreen = Screen.Usage }
+                            onBack = { currentScreen = Screen.Usage },
+                            codexFirst = primaryMode == AppPreferences.MODE_CHATGPT
                         )
                     }
                 }
@@ -374,6 +375,11 @@ class MainActivity : ComponentActivity() {
         codexLoginLauncher.launch(intent)
     }
 
+    /** Either provider has data, so the persistent notification has something to show */
+    private fun hasUsageToShow(): Boolean =
+        viewModel.uiState.value is UiState.Success ||
+            viewModel.codexState.value is CodexUiState.Connected
+
     private fun handleNotificationToggle(enabled: Boolean) {
         if (enabled) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -382,7 +388,7 @@ class MainActivity : ComponentActivity() {
                 ) {
                     appPreferences.notificationEnabled = true
                     notificationEnabled = true
-                    if (viewModel.uiState.value is UiState.Success) {
+                    if (hasUsageToShow()) {
                         UsageNotificationService.start(applicationContext)
                     }
                 } else {
@@ -393,7 +399,7 @@ class MainActivity : ComponentActivity() {
             } else {
                 appPreferences.notificationEnabled = true
                 notificationEnabled = true
-                if (viewModel.uiState.value is UiState.Success) {
+                if (hasUsageToShow()) {
                     UsageNotificationService.start(applicationContext)
                 }
             }

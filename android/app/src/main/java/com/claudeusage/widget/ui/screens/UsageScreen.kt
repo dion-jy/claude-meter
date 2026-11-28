@@ -172,8 +172,13 @@ fun UsageScreen(
                     }
                 },
                 actions = {
-                    // Forecast is built from Claude history only
-                    if (uiState is UiState.Success) {
+                    // Forecast graphs both providers' weekly limits, so a
+                    // ChatGPT-only user gets it too
+                    if ((uiState is UiState.Success &&
+                            AppPreferences.CLAUDE_METRIC_KEY !in hiddenMetrics) ||
+                        (codexState is CodexUiState.Connected &&
+                            AppPreferences.CODEX_METRIC_KEY !in hiddenMetrics)
+                    ) {
                         IconButton(onClick = onForecastClick) {
                             Icon(
                                 Icons.Default.ShowChart,

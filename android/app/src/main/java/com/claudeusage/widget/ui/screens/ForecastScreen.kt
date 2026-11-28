@@ -81,23 +81,26 @@ fun ForecastScreen(
     hiddenMetrics: Set<String>,
     hiddenSeries: Set<String>,
     onToggleSeries: (String, Boolean) -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    // ChatGPT mode: GPT leads the toggle row and sets the week window
+    codexFirst: Boolean = false
 ) {
     // Two levels of visibility: Settings decides which limits the app tracks
     // at all (hiddenMetrics, shared with UsageScreen), and the chips below
     // filter what the graph draws from what is left.
-    val allSeries = remember(usageData, codexData, history, hiddenMetrics) {
-        buildWeeklySeries(usageData, codexData, history, hiddenMetrics)
+    val allSeries = remember(usageData, codexData, history, hiddenMetrics, codexFirst) {
+        buildWeeklySeries(usageData, codexData, history, hiddenMetrics, codexFirst)
     }
     // Keys not in hiddenSeries are shown, so new limits appear by default.
     // If prefs somehow hide everything, fall back to showing all.
     val visibleSeries = allSeries.filter { it.key !in hiddenSeries }
         .ifEmpty { allSeries }
 
-    // Shared week window: the overall Claude week when available
+    // Shared week window: the leading series' week (overall Claude, or GPT
+    // in ChatGPT mode), else the first one that knows its reset time
     val now = Instant.now()
     val weekDurationMs = Duration.ofDays(7).toMillis()
-    val weekEndMs = (usageData?.sevenDay?.resetsAt
+    val weekEndMs = (allSeries.firstOrNull()?.resetsAt
         ?: allSeries.firstNotNullOfOrNull { it.resetsAt })
         ?.toEpochMilli()
         ?: (now.toEpochMilli() + weekDurationMs)
@@ -520,14 +523,16 @@ private fun WeeklySeries.burningRatePerHour(sharedWeekStartMs: Long, now: Instan
 /**
  * Builds the graph's series, skipping anything the user switched off in
  * Settings so the forecast screen shows exactly the limits the rest of the
- * app tracks. The provider-wide Claude total has no Settings toggle (it is
- * a pinned card on the usage screen), so it is always present.
+ * app tracks. The provider-wide Claude total has no per-limit toggle (it is
+ * a pinned card on the usage screen); it goes away only when Claude as a
+ * whole is switched off, which ChatGPT mode allows.
  */
 private fun buildWeeklySeries(
     usageData: UsageData?,
     codexData: CodexUsageData?,
     history: Map<String, List<UsageHistoryEntry>>,
-    hiddenMetrics: Set<String>
+    hiddenMetrics: Set<String>,
+    codexFirst: Boolean = false
 ): List<WeeklySeries> {
     val palette = listOf(GraphBlue, GraphAmber, GraphPink, GraphCyan, GraphLime)
     var paletteIndex = 0
@@ -539,8 +544,11 @@ private fun buildWeeklySeries(
         UsageHistoryStore.SERIES_CODEX_WEEKLY
     )
 
+    // In ChatGPT mode Claude is a secondary provider the user can hide entirely
+    val showClaude = AppPreferences.CLAUDE_METRIC_KEY !in hiddenMetrics
+
     // Overall Claude weekly limit — the total its per-model limits roll into
-    result += WeeklySeries(
+    if (showClaude) result += WeeklySeries(
         key = UsageHistoryStore.SERIES_WEEKLY_ALL,
         label = "All",
         provider = PROVIDER_CLAUDE,
@@ -553,6 +561,7 @@ private fun buildWeeklySeries(
 
     // Per-model weekly limits currently reported (Fable, Sonnet, ...)
     usageData?.dynamicMetrics
+        ?.takeIf { showClaude }
         ?.filter { it.key.startsWith("seven_day_") || it.label.endsWith("(7d)") }
         ?.forEach { labeled ->
             usedKeys += labeled.key
@@ -589,7 +598,7 @@ private fun buildWeeklySeries(
 
     // Series that only exist in history (e.g. limit no longer reported)
     history.keys
-        .filter { it !in usedKeys && it !in hiddenMetrics }
+        .filter { showClaude && it !in usedKeys && it !in hiddenMetrics }
         .sorted()
         .forEach { key ->
             result += WeeklySeries(
@@ -604,7 +613,10 @@ private fun buildWeeklySeries(
             )
         }
 
-    return result.filter { it.currentUtil != null || it.entries.isNotEmpty() }
+    return result
+        .filter { it.currentUtil != null || it.entries.isNotEmpty() }
+        // Stable sort: only moves GPT ahead, Claude keeps its own order
+        .let { list -> if (codexFirst) list.sortedBy { if (it.provider == PROVIDER_OPENAI) 0 else 1 } else list }
 }
 
 @Composable
